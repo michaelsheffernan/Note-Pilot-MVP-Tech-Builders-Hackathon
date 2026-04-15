@@ -195,6 +195,20 @@ function DashboardPage() {
           {activeTab === "plan" && (
             <CalendarStudyPlan plan={plan} completed={completed} onToggleComplete={toggleComplete} onEditDay={handleEditDay} onDeleteDay={handleDeleteDay} />
           )}
+          {activeTab === "notes" && (
+            <NotesTab
+              uploadId={uploadId}
+              fileText={upload?.file_text ?? ""}
+              subjectName={upload?.subject_name ?? ""}
+              accessToken={session?.access_token ?? ""}
+              onPlanUpdated={() => {
+                // Re-fetch upload data to reflect new notes
+                supabase.from("uploads").select("subject_name, test_date, file_text, created_at").eq("id", uploadId).single().then(({ data }) => {
+                  if (data) setUpload(data);
+                });
+              }}
+            />
+          )}
           {activeTab === "flashcards" && <FlashcardsTab cards={cards} />}
           {activeTab === "coach" && (
             <CoachTab
