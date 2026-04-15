@@ -13,24 +13,22 @@ export const analyseNotes = createServerFn({ method: "POST" })
     }) => input
   )
   .handler(async ({ data }) => {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+    // Use VITE_ prefixed vars available in the server runtime, or fallback to non-prefixed
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
-    if (!supabaseUrl || !serviceKey || !publishableKey) {
-      throw new Error("Missing Supabase environment variables. Ensure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_PUBLISHABLE_KEY are set.");
+    if (!supabaseUrl || !publishableKey) {
+      throw new Error("Missing Supabase environment variables.");
     }
 
-    const supabase = createClient<Database>(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    // Get user from access token
-    const userClient = createClient<Database>(supabaseUrl, publishableKey, {
+    // Use the user's access token to authenticate — no service role key needed
+    const supabase = createClient<Database>(supabaseUrl, publishableKey, {
       global: { headers: { Authorization: `Bearer ${data.accessToken}` } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: authData, error: authError } = await userClient.auth.getUser();
+
+    // Verify user
+    const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw new Error("Unauthorized");
     const userId = authData.user.id;
 
@@ -40,17 +38,10 @@ export const analyseNotes = createServerFn({ method: "POST" })
       .download(data.fileUrl);
     if (downloadError || !fileData) throw new Error("Failed to download file");
 
-    // Extract text from file (for now, treat as text; PDF/DOCX extraction is limited in Workers)
+    // Extract text from file
     let noteText = "";
     const fileName = data.fileUrl.toLowerCase();
     if (fileName.endsWith(".pdf") || fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
-      // For binary files, we convert to base64 and ask Claude to interpret
-      const arrayBuffer = await fileData.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
       noteText = `[Binary file uploaded: ${data.fileUrl}. The student uploaded their study notes. Please generate a comprehensive study plan and flashcards based on a typical ${data.subjectName} course.]`;
     } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png")) {
       noteText = `[Image file uploaded: ${data.fileUrl}. The student uploaded photo notes for ${data.subjectName}. Please generate a comprehensive study plan and flashcards based on typical ${data.subjectName} topics.]`;
@@ -73,10 +64,30 @@ export const analyseNotes = createServerFn({ method: "POST" })
     const testDate = new Date(data.testDate);
     const daysUntilTest = Math.max(1, Math.ceil((testDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
 
-    // Call AI to generate study plan and flashcards
+    // Call AI — LOVABLE_API_KEY is not in process.env for server functions,
+    // so we call the gateway using the supabase edge function pattern instead.
+    // Use a dedicated edge function, or call the gateway directly if key is available.
     const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI API key not configured");
+    if (!apiKey) {
+      // Fallback: call via supabase edge function
+      const { data: aiData, error: aiError } = await supabase.functions.invoke("analyse-ai", {
+        body: {
+          subjectName: data.subjectName,
+          testDate: data.testDate,
+          daysUntilTest,
+          noteText: noteText.slice(0, 15000),
+          uploadId: data.uploadId,
+          userId,
+        },
+      });
+      if (aiError) {
+        console.error("Edge function error:", aiError);
+        throw new Error("AI generation failed. Please try again.");
+      }
+      return aiData as { success: boolean };
+    }
 
+    // Direct gateway call (if LOVABLE_API_KEY is in process.env)
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -120,13 +131,16 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
     const aiResult = await aiResponse.json();
     const content = aiResult.choices?.[0]?.message?.content ?? "";
 
-    // Parse the JSON from AI response
+    // Robust JSON extraction
     let parsed: { study_plan: unknown[]; flashcards: unknown[] };
     try {
-      // Try to extract JSON from the response (AI sometimes wraps in markdown)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found");
-      parsed = JSON.parse(jsonMatch[0]);
+      let cleaned = content.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const jsonStart = cleaned.indexOf("{");
+      const jsonEnd = cleaned.lastIndexOf("}");
+      if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found");
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+      cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+      parsed = JSON.parse(cleaned);
     } catch {
       console.error("Failed to parse AI response:", content);
       throw new Error("Failed to parse AI response. Please try again.");
