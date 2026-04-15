@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 export const coachChat = createServerFn({ method: "POST" })
   .inputValidator(
@@ -7,43 +9,35 @@ export const coachChat = createServerFn({ method: "POST" })
       noteContext: string;
       subjectName: string;
       history: Array<{ role: "user" | "assistant"; content: string }>;
+      accessToken: string;
     }) => input
   )
   .handler(async ({ data }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("AI API key not configured");
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
-    const messages = [
-      {
-        role: "system" as const,
-        content: `You are a helpful study coach for "${data.subjectName}". You have access to the student's notes and should answer questions based on them. Be encouraging, clear, and concise. If you don't know something from the notes, say so.
+    if (!supabaseUrl || !publishableKey) {
+      throw new Error("Missing Supabase environment variables.");
+    }
 
-STUDENT NOTES CONTEXT:
-${data.noteContext.slice(0, 10000)}`,
-      },
-      ...data.history.slice(-10),
-      { role: "user" as const, content: data.message },
-    ];
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        max_tokens: 1500,
-        temperature: 0.7,
-      }),
+    const supabase = createClient<Database>(supabaseUrl, publishableKey, {
+      global: { headers: { Authorization: `Bearer ${data.accessToken}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    if (!response.ok) {
+    const { data: aiData, error: aiError } = await supabase.functions.invoke("coach-chat", {
+      body: {
+        message: data.message,
+        noteContext: data.noteContext.slice(0, 10000),
+        subjectName: data.subjectName,
+        history: data.history.slice(-10),
+      },
+    });
+
+    if (aiError) {
+      console.error("Coach edge function error:", aiError);
       throw new Error("AI coach is temporarily unavailable. Please try again.");
     }
 
-    const result = await response.json();
-    const reply = result.choices?.[0]?.message?.content ?? "I'm sorry, I couldn't generate a response.";
-    return { reply };
+    return { reply: aiData?.reply ?? "I'm sorry, I couldn't generate a response." };
   });
