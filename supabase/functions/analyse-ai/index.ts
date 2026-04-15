@@ -21,17 +21,22 @@ serve(async (req) => {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const promptText = `You are a study planning AI. Based on the following student notes for "${subjectName}" with a test in ${daysUntilTest} days (test date: ${testDate}), generate:
+    const promptText = `You are a study planning AI. A student has uploaded their study notes. The subject label they entered is "${subjectName}" but IGNORE this label if the actual notes content differs — always base your output on the ACTUAL content of the notes.
+
+The test is in ${daysUntilTest} days (test date: ${testDate}).
+
+Generate:
 
 1. A study plan as a JSON array: [{"day": 1, "date": "YYYY-MM-DD", "topics": ["topic1", "topic2"], "estimated_minutes": 60}]
    - Spread across ${daysUntilTest} days starting from today (${today})
-   - Each day should have 1-3 focused topics
+   - Each day should have 1-3 focused topics derived from the actual notes
    - Estimated minutes between 30-90
 
 2. Flashcards as a JSON array: [{"question": "...", "answer": "..."}]
-   - Generate 15-30 flashcards covering the key concepts from the actual notes provided
+   - Generate 15-30 flashcards covering the key concepts FROM THE ACTUAL NOTES
+   - Questions should test understanding of the specific content in the notes
 
-IMPORTANT: Read the attached notes carefully and base ALL topics and flashcards on the ACTUAL content, not generic subject material.
+CRITICAL: You MUST read the attached file/notes carefully. Base ALL topics and flashcards ONLY on the actual content provided — never generate generic subject material.
 
 ${fileBase64 ? "" : `STUDENT NOTES:\n${noteText}`}
 
