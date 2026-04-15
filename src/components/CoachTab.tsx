@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { coachChat } from "@/server/coach.functions";
@@ -9,6 +9,12 @@ interface Message {
   role: "user" | "assistant";
   content: string;
 }
+
+const suggestions = [
+  "What are the key topics I should focus on?",
+  "Explain the main concepts in simple terms",
+  "Quiz me on this material",
+];
 
 export function CoachTab({ noteContext, subjectName, accessToken }: { noteContext: string; subjectName: string; accessToken: string }) {
   const [messages, setMessages] = useState<Message[]>([
@@ -22,11 +28,11 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    const msg = input.trim();
-    if (!msg || loading) return;
+  const handleSend = async (msg?: string) => {
+    const text = (msg || input).trim();
+    if (!text || loading) return;
 
-    const userMsg: Message = { role: "user", content: msg };
+    const userMsg: Message = { role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
@@ -34,7 +40,7 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
     try {
       const result = await coachChat({
         data: {
-          message: msg,
+          message: text,
           noteContext,
           subjectName,
           accessToken,
@@ -52,8 +58,17 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
     }
   };
 
+  const showSuggestions = messages.length <= 1;
+
   return (
     <div className="flex flex-col h-[60vh]">
+      <div className="mb-2 flex items-center justify-end">
+        <span className="flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+          <Sparkles className="h-3 w-3 text-primary" />
+          Powered by AI
+        </span>
+      </div>
+
       <div className="flex-1 overflow-y-auto space-y-3 pr-2 pb-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -92,6 +107,20 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
         <div ref={bottomRef} />
       </div>
 
+      {showSuggestions && (
+        <div className="flex flex-wrap gap-2 pb-3">
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() => handleSend(s)}
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex gap-2 pt-4 border-t border-border">
         <Input
           value={input}
@@ -100,7 +129,7 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           disabled={loading}
         />
-        <Button onClick={handleSend} disabled={loading || !input.trim()} size="icon">
+        <Button onClick={() => handleSend()} disabled={loading || !input.trim()} size="icon">
           <Send className="h-4 w-4" />
         </Button>
       </div>
