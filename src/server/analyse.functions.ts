@@ -84,7 +84,7 @@ export const analyseNotes = createServerFn({ method: "POST" })
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "user",
