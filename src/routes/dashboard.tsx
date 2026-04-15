@@ -83,6 +83,14 @@ function DashboardPage() {
     });
   };
 
+  const handleEditDay = (day: number, updates: { topics: string[]; estimated_minutes: number }) => {
+    setPlan((prev) => prev.map((d) => d.day === day ? { ...d, ...updates } : d));
+  };
+
+  const handleDeleteDay = (day: number) => {
+    setPlan((prev) => prev.filter((d) => d.day !== day));
+  };
+
   if (loading || dataLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -183,7 +191,7 @@ function DashboardPage() {
         {/* Tab content */}
         <div className="animate-fade-in">
           {activeTab === "plan" && (
-            <CalendarStudyPlan plan={plan} completed={completed} onToggleComplete={toggleComplete} />
+            <CalendarStudyPlan plan={plan} completed={completed} onToggleComplete={toggleComplete} onEditDay={handleEditDay} onDeleteDay={handleDeleteDay} />
           )}
           {activeTab === "flashcards" && <FlashcardsTab cards={cards} />}
           {activeTab === "coach" && (
