@@ -26,7 +26,6 @@ export const analyseNotes = createServerFn({ method: "POST" })
     });
 
     // Get user from access token
-    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
     const userClient = createClient<Database>(supabaseUrl, publishableKey, {
       global: { headers: { Authorization: `Bearer ${data.accessToken}` } },
       auth: { persistSession: false, autoRefreshToken: false },
