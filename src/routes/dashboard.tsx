@@ -39,7 +39,7 @@ interface Flashcard {
 
 function DashboardPage() {
   const { uploadId } = Route.useSearch();
-  const { user, loading, signOut } = useAuth();
+  const { user, session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("plan");
   const [upload, setUpload] = useState<{
@@ -140,6 +140,7 @@ function DashboardPage() {
           <CoachTab
             noteContext={upload?.file_text ?? ""}
             subjectName={upload?.subject_name ?? ""}
+            accessToken={session?.access_token ?? ""}
           />
         )}
       </div>
