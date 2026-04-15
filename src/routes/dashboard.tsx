@@ -25,7 +25,7 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-type Tab = "plan" | "flashcards" | "coach";
+type Tab = "plan" | "notes" | "flashcards" | "coach";
 
 interface StudyDay {
   day: number;
