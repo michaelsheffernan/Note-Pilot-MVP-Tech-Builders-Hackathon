@@ -94,6 +94,8 @@ export const analyseNotes = createServerFn({ method: "POST" })
           testDate: data.testDate,
           daysUntilTest,
           noteText: noteText.slice(0, 15000),
+          fileBase64: fileBase64 || undefined,
+          fileMimeType: fileMimeType || undefined,
           uploadId: data.uploadId,
           userId,
         },
