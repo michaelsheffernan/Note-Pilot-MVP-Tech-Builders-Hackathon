@@ -14,7 +14,100 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      flashcards: {
+        Row: {
+          cards_json: Json
+          created_at: string
+          id: string
+          upload_id: string
+          user_id: string
+        }
+        Insert: {
+          cards_json?: Json
+          created_at?: string
+          id?: string
+          upload_id: string
+          user_id: string
+        }
+        Update: {
+          cards_json?: Json
+          created_at?: string
+          id?: string
+          upload_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_plans: {
+        Row: {
+          created_at: string
+          id: string
+          plan_json: Json
+          upload_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan_json?: Json
+          upload_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan_json?: Json
+          upload_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plans_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uploads: {
+        Row: {
+          created_at: string
+          file_text: string | null
+          file_url: string
+          id: string
+          subject_name: string
+          test_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_text?: string | null
+          file_url: string
+          id?: string
+          subject_name: string
+          test_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_text?: string | null
+          file_url?: string
+          id?: string
+          subject_name?: string
+          test_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
