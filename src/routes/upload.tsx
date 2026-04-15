@@ -85,6 +85,10 @@ function UploadPage() {
   const [weakTopics, setWeakTopics] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
 
+  // Days per week & which days
+  const [daysPerWeek, setDaysPerWeek] = useState("");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -146,6 +150,8 @@ function UploadPage() {
         weakTopics,
         additionalNotes,
         studyMode,
+        daysPerWeek,
+        studyDays: selectedDays.join(","),
       };
       if (studyMode === "duration") {
         const numDays = durationPreset === "custom" ? customDays : durationPreset;
