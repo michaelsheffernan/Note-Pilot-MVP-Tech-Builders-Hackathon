@@ -38,13 +38,31 @@ export const analyseNotes = createServerFn({ method: "POST" })
       .download(data.fileUrl);
     if (downloadError || !fileData) throw new Error("Failed to download file");
 
-    // Extract text from file
+    // Extract text or prepare binary for multimodal AI
     let noteText = "";
+    let fileBase64 = "";
+    let fileMimeType = "";
     const fileName = data.fileUrl.toLowerCase();
-    if (fileName.endsWith(".pdf") || fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
-      noteText = `[Binary file uploaded: ${data.fileUrl}. The student uploaded their study notes. Please generate a comprehensive study plan and flashcards based on a typical ${data.subjectName} course.]`;
-    } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png")) {
-      noteText = `[Image file uploaded: ${data.fileUrl}. The student uploaded photo notes for ${data.subjectName}. Please generate a comprehensive study plan and flashcards based on typical ${data.subjectName} topics.]`;
+
+    if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png") ||
+        fileName.endsWith(".pdf") || fileName.endsWith(".webp")) {
+      // Send binary files directly to Gemini as base64 (it supports vision + PDF natively)
+      const arrayBuf = await fileData.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      fileBase64 = btoa(binary);
+      if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
+      else if (fileName.endsWith(".png")) fileMimeType = "image/png";
+      else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
+      else fileMimeType = "image/jpeg";
+      noteText = `[File attached as base64 for direct reading]`;
+    } else if (fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
+      // DOCX can't be read natively by the AI — extract what we can as text
+      noteText = await fileData.text();
+      if (!noteText || noteText.length < 20) {
+        noteText = `Student is studying ${data.subjectName}. The uploaded DOCX file could not be parsed. Generate a comprehensive study plan and flashcards for this subject.`;
+      }
     } else {
       noteText = await fileData.text();
     }
@@ -76,6 +94,8 @@ export const analyseNotes = createServerFn({ method: "POST" })
           testDate: data.testDate,
           daysUntilTest,
           noteText: noteText.slice(0, 15000),
+          fileBase64: fileBase64 || undefined,
+          fileMimeType: fileMimeType || undefined,
           uploadId: data.uploadId,
           userId,
         },
