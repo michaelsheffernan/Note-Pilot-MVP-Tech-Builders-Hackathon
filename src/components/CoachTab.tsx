@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { coachChat } from "@/server/coach.functions";
@@ -12,13 +12,13 @@ interface Message {
 
 const suggestions = [
   "What are the key topics I should focus on?",
-  "Explain the main concepts in simple terms",
+  "Explain the main concepts simply",
   "Quiz me on this material",
 ];
 
 export function CoachTab({ noteContext, subjectName, accessToken }: { noteContext: string; subjectName: string; accessToken: string }) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: `Hi! I'm your AI study coach for **${subjectName}**. Ask me anything about your notes!` },
+    { role: "assistant", content: `Hi! I'm your study coach for **${subjectName}**. Ask me anything about your notes.` },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,8 +32,7 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
     const text = (msg || input).trim();
     if (!text || loading) return;
 
-    const userMsg: Message = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
     setLoading(true);
 
@@ -44,10 +43,7 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
           noteContext,
           subjectName,
           accessToken,
-          history: messages.filter((m) => m.role !== "assistant" || messages.indexOf(m) > 0).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          history: messages.filter((m) => m.role !== "assistant" || messages.indexOf(m) > 0).map((m) => ({ role: m.role, content: m.content })),
         },
       });
       setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
@@ -63,29 +59,16 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
   return (
     <div className="flex flex-col h-[60vh]">
       <div className="mb-2 flex items-center justify-end">
-        <span className="flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
-          <Sparkles className="h-3 w-3 text-primary" />
-          Powered by AI
-        </span>
+        <span className="rounded-full bg-secondary px-3 py-1 text-[10px] text-muted-foreground">Powered by AI</span>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-2 pb-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "glass-card text-foreground"
-              }`}
-            >
+            <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "glass-card text-foreground"}`}>
               {msg.role === "assistant" ? (
-                <div className="prose prose-sm prose-invert max-w-none">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
-              ) : (
-                msg.content
-              )}
+                <div className="prose prose-sm prose-invert max-w-none"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+              ) : msg.content}
             </div>
           </div>
         ))}
@@ -94,11 +77,7 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
             <div className="glass-card rounded-xl px-4 py-3">
               <div className="flex gap-1">
                 {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="h-2 w-2 rounded-full bg-primary"
-                    style={{ animation: `pulse-dot 1.4s ease-in-out ${i * 0.2}s infinite` }}
-                  />
+                  <div key={i} className="h-2 w-2 rounded-full bg-primary" style={{ animation: `pulse-dot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
                 ))}
               </div>
             </div>
@@ -110,11 +89,8 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
       {showSuggestions && (
         <div className="flex flex-wrap gap-2 pb-3">
           {suggestions.map((s) => (
-            <button
-              key={s}
-              onClick={() => handleSend(s)}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-            >
+            <button key={s} onClick={() => handleSend(s)}
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary">
               {s}
             </button>
           ))}
@@ -122,13 +98,7 @@ export function CoachTab({ noteContext, subjectName, accessToken }: { noteContex
       )}
 
       <div className="flex gap-2 pt-4 border-t border-border">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about your notes..."
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          disabled={loading}
-        />
+        <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask about your notes..." onKeyDown={(e) => e.key === "Enter" && handleSend()} disabled={loading} />
         <Button onClick={() => handleSend()} disabled={loading || !input.trim()} size="icon">
           <Send className="h-4 w-4" />
         </Button>

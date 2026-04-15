@@ -28,25 +28,16 @@ function AuthPage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && user) {
-      navigate({ to: "/upload" });
-    }
+    if (!loading && user) navigate({ to: "/upload" });
   }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSignUp && password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
+    if (isSignUp && password !== confirmPassword) { toast.error("Passwords do not match"); return; }
     setSubmitting(true);
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
+        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
         if (error) throw error;
         toast.success("Check your email to confirm your account");
       } else {
@@ -56,37 +47,24 @@ function AuthPage() {
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="glass-card w-full max-w-md p-8">
-        <div className="mb-2 flex flex-col items-center gap-2">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-blue-soft">
-            <BookOpen className="h-7 w-7 text-primary" />
-          </div>
+        <div className="mb-2 flex flex-col items-center gap-1">
           <span className="text-2xl font-bold text-foreground">StudySync</span>
           <p className="text-sm text-muted-foreground">Your AI study partner</p>
         </div>
 
         <div className="mb-6 mt-6 flex rounded-xl bg-secondary p-1">
-          <button
-            onClick={() => setIsSignUp(false)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-              !isSignUp ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-            }`}
-          >
+          <button onClick={() => setIsSignUp(false)}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${!isSignUp ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             Log In
           </button>
-          <button
-            onClick={() => setIsSignUp(true)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-              isSignUp ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-            }`}
-          >
+          <button onClick={() => setIsSignUp(true)}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${isSignUp ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             Sign Up
           </button>
         </div>
@@ -96,31 +74,14 @@ function AuthPage() {
             <Label htmlFor="email">Email</Label>
             <div className="relative mt-1">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="pl-10"
-                placeholder="you@example.com"
-              />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="pl-10" placeholder="you@example.com" />
             </div>
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
             <div className="relative mt-1">
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="pl-10"
-                placeholder="••••••••"
-                minLength={6}
-              />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="pl-10" placeholder="••••••••" minLength={6} />
             </div>
           </div>
           {isSignUp && (
@@ -128,16 +89,7 @@ function AuthPage() {
               <Label htmlFor="confirm">Confirm Password</Label>
               <div className="relative mt-1">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="confirm"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="pl-10"
-                  placeholder="••••••••"
-                  minLength={6}
-                />
+                <Input id="confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="pl-10" placeholder="••••••••" minLength={6} />
               </div>
             </div>
           )}
@@ -152,9 +104,7 @@ function AuthPage() {
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Free to get started. No credit card required.
-        </p>
+        <p className="text-center text-xs text-muted-foreground">Free to get started. No credit card required.</p>
       </div>
     </div>
   );

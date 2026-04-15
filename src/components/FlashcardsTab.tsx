@@ -15,14 +15,9 @@ export function FlashcardsTab({ cards }: { cards: Flashcard[] }) {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === " " || e.key === "Spacebar") {
-        e.preventDefault();
-        setFlipped((f) => !f);
-      } else if (e.key === "ArrowRight") {
-        goNext();
-      } else if (e.key === "ArrowLeft") {
-        goPrev();
-      }
+      if (e.key === " " || e.key === "Spacebar") { e.preventDefault(); setFlipped((f) => !f); }
+      else if (e.key === "ArrowRight") goNext();
+      else if (e.key === "ArrowLeft") goPrev();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -40,43 +35,35 @@ export function FlashcardsTab({ cards }: { cards: Flashcard[] }) {
     setCurrentIndex((i) => Math.min(i + 1, cards.length - 1));
   };
 
-  const goPrev = () => {
-    setFlipped(false);
-    setCurrentIndex((i) => Math.max(i - 1, 0));
-  };
+  const goPrev = () => { setFlipped(false); setCurrentIndex((i) => Math.max(i - 1, 0)); };
 
   const reviewedCount = reviewed.size + (flipped ? 1 : 0);
   const reviewProgress = Math.round((Math.min(reviewedCount, cards.length) / cards.length) * 100);
 
   return (
     <div className="flex flex-col items-center">
-      <div className="mb-4 flex w-full max-w-md items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Card {currentIndex + 1} of {cards.length}
-        </p>
-        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-          {currentIndex + 1} / {cards.length}
-        </span>
+      <div className="mb-3 flex w-full max-w-md items-center justify-between">
+        <p className="text-sm text-muted-foreground">{currentIndex + 1} / {cards.length}</p>
+        <span className="text-xs text-primary font-medium">{reviewProgress}% reviewed</span>
       </div>
 
-      <div className="mb-3 w-full max-w-md">
+      <div className="mb-4 w-full max-w-md">
         <Progress value={reviewProgress} className="h-1.5" />
       </div>
 
       <div
         onClick={() => setFlipped(!flipped)}
-        className="glass-card flex min-h-[250px] w-full max-w-md cursor-pointer items-center justify-center p-8 text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-        style={{ perspective: "1000px" }}
+        className="glass-card flex min-h-[280px] w-full max-w-md cursor-pointer items-center justify-center p-8 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
       >
         <div className={`transition-all duration-300 ${flipped ? "scale-[1.02]" : ""}`}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary/60">
             {flipped ? "Answer" : "Question"}
           </p>
-          <p className="text-lg font-medium text-foreground">
+          <p className="text-lg font-medium text-foreground leading-relaxed">
             {flipped ? card.answer : card.question}
           </p>
           {!flipped && (
-            <p className="mt-4 text-xs text-muted-foreground">Click to reveal answer</p>
+            <p className="mt-6 text-xs text-muted-foreground">Tap to reveal</p>
           )}
         </div>
       </div>
@@ -85,25 +72,18 @@ export function FlashcardsTab({ cards }: { cards: Flashcard[] }) {
         <Button variant="outline" size="icon" onClick={goPrev} disabled={currentIndex === 0}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
-
         <div className="flex gap-1">
-          {cards.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                i === currentIndex ? "bg-primary" : "bg-border"
-              }`}
-            />
+          {cards.length <= 30 && cards.map((_, i) => (
+            <div key={i} className={`h-1.5 w-1.5 rounded-full transition-colors ${i === currentIndex ? "bg-primary" : reviewed.has(i) ? "bg-primary/30" : "bg-border"}`} />
           ))}
         </div>
-
         <Button variant="outline" size="icon" onClick={goNext} disabled={currentIndex === cards.length - 1}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
 
-      <p className="mt-4 text-xs text-muted-foreground">
-        Press Space to flip &middot; Arrow keys to navigate
+      <p className="mt-4 text-[11px] text-muted-foreground">
+        Space to flip &middot; Arrow keys to navigate
       </p>
     </div>
   );
