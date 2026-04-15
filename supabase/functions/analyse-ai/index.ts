@@ -89,6 +89,7 @@ serve(async (req) => {
     if (ctx.studyMode) studentContext += `\n- Study mode: ${ctx.studyMode === "duration" ? "general study (no specific exam)" : "exam preparation"}`;
     if (ctx.studyDuration) studentContext += `\n- Study duration: ${ctx.studyDuration}`;
     if (ctx.studyGoal) studentContext += `\n- Study goal: ${ctx.studyGoal}`;
+    if (ctx.studentName) studentContext += `\n- Student's name: ${ctx.studentName}`;
 
     const promptText = `You are a study planning AI. A student has uploaded their study notes. The subject label they entered is "${subjectName}" but IGNORE this label if the actual notes content differs — always base your output on the ACTUAL content of the notes.
 

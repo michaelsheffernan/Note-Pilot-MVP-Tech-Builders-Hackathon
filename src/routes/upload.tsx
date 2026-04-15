@@ -8,6 +8,7 @@ import { UploadCloud, FileText, Sparkles, ArrowRight, ArrowLeft } from "lucide-r
 import { UserMenu } from "@/components/UserMenu";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profile";
 import { format, addDays } from "date-fns";
 
 export const Route = createFileRoute("/upload")({
@@ -58,6 +59,7 @@ const durationPresets = [
 
 function UploadPage() {
   const { user, loading, signOut } = useAuth();
+  const { displayName: userName } = useProfile();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -153,6 +155,7 @@ function UploadPage() {
         studyMode,
         daysPerWeek,
         studyDays: selectedDays.join(","),
+        studentName: userName,
       };
       if (studyMode === "duration") {
         const numDays = durationPreset === "custom" ? customDays : durationPreset;
