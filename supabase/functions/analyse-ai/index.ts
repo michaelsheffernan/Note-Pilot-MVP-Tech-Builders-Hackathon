@@ -6,6 +6,62 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function repairAndParseJSON(raw: string): { study_plan: any[]; flashcards: any[] } {
+  let cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const jsonStart = cleaned.indexOf("{");
+  if (jsonStart === -1) throw new Error("No JSON object found in AI response");
+  cleaned = cleaned.substring(jsonStart);
+
+  // Try parsing as-is first
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed.study_plan && parsed.flashcards) return parsed;
+  } catch { /* continue to repair */ }
+
+  // Remove trailing commas
+  cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+
+  // Try again
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed.study_plan && parsed.flashcards) return parsed;
+  } catch { /* continue to repair */ }
+
+  // The JSON is likely truncated. Try to close open brackets/braces.
+  let repaired = cleaned;
+  // Count open brackets
+  const opens = (s: string, c: string) => (s.match(new RegExp(`\\${c}`, "g")) || []).length;
+  const closes = (s: string, c: string) => (s.match(new RegExp(`\\${c}`, "g")) || []).length;
+
+  // Remove any trailing partial string/value (text after last complete entry)
+  // Find the last complete object or value separator
+  const lastGoodComma = repaired.lastIndexOf("},");
+  const lastGoodBracket = repaired.lastIndexOf("}]");
+  const lastGood = Math.max(lastGoodComma, lastGoodBracket);
+
+  if (lastGood > 0 && lastGood < repaired.length - 5) {
+    repaired = repaired.substring(0, lastGood + 1);
+  }
+
+  // Remove trailing commas again
+  repaired = repaired.replace(/,\s*$/, "");
+
+  // Close open brackets
+  let openSquare = opens(repaired, "[") - closes(repaired, "]");
+  let openCurly = opens(repaired, "{") - closes(repaired, "}");
+  while (openSquare > 0) { repaired += "]"; openSquare--; }
+  while (openCurly > 0) { repaired += "}"; openCurly--; }
+
+  try {
+    const parsed = JSON.parse(repaired);
+    if (parsed.study_plan) return { study_plan: parsed.study_plan, flashcards: parsed.flashcards || [] };
+    return { study_plan: [], flashcards: [] };
+  } catch (e) {
+    console.error("JSON repair failed. Raw content (first 500 chars):", raw.substring(0, 500));
+    throw new Error("Failed to parse AI response as JSON after repair attempts");
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -21,7 +77,6 @@ serve(async (req) => {
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Build student context from extra questions
     const ctx = extraContext || {};
     let studentContext = "";
     if (ctx.examType) studentContext += `\n- Exam type: ${ctx.examType}`;
@@ -31,6 +86,9 @@ serve(async (req) => {
     if (ctx.focusAreas) studentContext += `\n- Topics to focus on: ${ctx.focusAreas}`;
     if (ctx.weakTopics) studentContext += `\n- Topics the student struggles with (give extra attention): ${ctx.weakTopics}`;
     if (ctx.additionalNotes) studentContext += `\n- Additional student notes: ${ctx.additionalNotes}`;
+    if (ctx.studyMode) studentContext += `\n- Study mode: ${ctx.studyMode === "duration" ? "general study (no specific exam)" : "exam preparation"}`;
+    if (ctx.studyDuration) studentContext += `\n- Study duration: ${ctx.studyDuration}`;
+    if (ctx.studyGoal) studentContext += `\n- Study goal: ${ctx.studyGoal}`;
 
     const promptText = `You are a study planning AI. A student has uploaded their study notes. The subject label they entered is "${subjectName}" but IGNORE this label if the actual notes content differs — always base your output on the ACTUAL content of the notes.
 
@@ -50,13 +108,12 @@ Generate:
    - For ${ctx.difficulty || "intermediate"} level students, adjust complexity appropriately
 
 2. Flashcards as a JSON array: [{"question": "...", "answer": "..."}]
-   - Generate 15-30 flashcards covering the key concepts FROM THE ACTUAL NOTES
+   - Generate 15-25 flashcards covering the key concepts FROM THE ACTUAL NOTES
    - Questions should test understanding of the specific content in the notes
    - For ${ctx.examType || "mixed"} exams, include appropriate question styles
-   - If the student prefers ${ctx.studyStyle || "mixed"} learning, adapt card format (e.g., more visual descriptions for visual learners)
    - Create extra flashcards for topics the student struggles with
 
-CRITICAL: You MUST read the attached file/notes carefully. Base ALL topics and flashcards ONLY on the actual content provided — never generate generic subject material.
+CRITICAL: Read the attached file/notes carefully. Base ALL topics and flashcards ONLY on the actual content provided — never generate generic subject material.
 
 ${fileBase64 ? "" : `STUDENT NOTES:\n${noteText}`}
 
@@ -67,10 +124,7 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
     if (fileBase64 && fileMimeType) {
       messageContent = [
         { type: "text", text: promptText },
-        {
-          type: "image_url",
-          image_url: { url: `data:${fileMimeType};base64,${fileBase64}` },
-        },
+        { type: "image_url", image_url: { url: `data:${fileMimeType};base64,${fileBase64}` } },
       ];
     } else {
       messageContent = promptText;
@@ -85,8 +139,8 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: messageContent }],
-        max_tokens: 4000,
-        temperature: 0.7,
+        max_tokens: 8000,
+        temperature: 0.5,
       }),
     });
 
@@ -109,13 +163,14 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
     const aiResult = await aiResponse.json();
     const content = aiResult.choices?.[0]?.message?.content ?? "";
 
-    let cleaned = content.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-    const jsonStart = cleaned.indexOf("{");
-    const jsonEnd = cleaned.lastIndexOf("}");
-    if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found in AI response");
-    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-    cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
-    const parsed = JSON.parse(cleaned);
+    if (!content) throw new Error("AI returned empty response");
+
+    const parsed = repairAndParseJSON(content);
+
+    if (!parsed.study_plan?.length) {
+      console.error("AI returned empty study plan");
+      throw new Error("AI generated an empty study plan");
+    }
 
     const { error: planError } = await supabase.from("study_plans").insert({
       user_id: userId, upload_id: uploadId, plan_json: parsed.study_plan,
@@ -123,7 +178,7 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
     if (planError) { console.error("Plan insert error:", planError); throw new Error("Failed to save study plan"); }
 
     const { error: cardsError } = await supabase.from("flashcards").insert({
-      user_id: userId, upload_id: uploadId, cards_json: parsed.flashcards,
+      user_id: userId, upload_id: uploadId, cards_json: parsed.flashcards || [],
     });
     if (cardsError) { console.error("Cards insert error:", cardsError); throw new Error("Failed to save flashcards"); }
 

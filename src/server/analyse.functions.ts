@@ -88,9 +88,19 @@ export const analyseNotes = createServerFn({ method: "POST" })
         extraContext: data.extraContext || {},
       },
     });
+
     if (aiError) {
       console.error("Edge function error:", aiError);
-      throw new Error("AI generation failed. Please try again.");
+      // Check if the response body contains a specific error message
+      const errorMsg = typeof aiData === "object" && aiData?.error
+        ? aiData.error
+        : "AI generation failed. Please try again.";
+      throw new Error(errorMsg);
     }
+
+    if (aiData?.error) {
+      throw new Error(aiData.error);
+    }
+
     return aiData as { success: boolean };
   });
