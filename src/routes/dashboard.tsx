@@ -48,6 +48,7 @@ function DashboardPage() {
     subject_name: string;
     test_date: string;
     file_text: string | null;
+    file_url: string;
     created_at: string;
   } | null>(null);
   const [plan, setPlan] = useState<StudyDay[]>([]);
@@ -63,7 +64,7 @@ function DashboardPage() {
     if (!user || !uploadId) return;
     const fetchData = async () => {
       const [uploadRes, planRes, cardsRes] = await Promise.all([
-        supabase.from("uploads").select("subject_name, test_date, file_text, created_at").eq("id", uploadId).single(),
+        supabase.from("uploads").select("subject_name, test_date, file_text, file_url, created_at").eq("id", uploadId).single(),
         supabase.from("study_plans").select("plan_json").eq("upload_id", uploadId).single(),
         supabase.from("flashcards").select("cards_json").eq("upload_id", uploadId).single(),
       ]);
@@ -199,11 +200,11 @@ function DashboardPage() {
             <NotesTab
               uploadId={uploadId}
               fileText={upload?.file_text ?? ""}
+              fileUrl={upload?.file_url ?? ""}
               subjectName={upload?.subject_name ?? ""}
               accessToken={session?.access_token ?? ""}
               onPlanUpdated={() => {
-                // Re-fetch upload data to reflect new notes
-                supabase.from("uploads").select("subject_name, test_date, file_text, created_at").eq("id", uploadId).single().then(({ data }) => {
+                supabase.from("uploads").select("subject_name, test_date, file_text, file_url, created_at").eq("id", uploadId).single().then(({ data }) => {
                   if (data) setUpload(data);
                 });
               }}

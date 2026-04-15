@@ -1,27 +1,41 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, FileText, Loader2, Sparkles } from "lucide-react";
+import { Upload, FileText, Loader2, Sparkles, Eye, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 
 interface NotesTabProps {
   uploadId: string;
   fileText: string;
+  fileUrl: string;
   subjectName: string;
   accessToken: string;
   onPlanUpdated?: () => void;
 }
 
-export function NotesTab({ uploadId, fileText, subjectName, accessToken, onPlanUpdated }: NotesTabProps) {
+export function NotesTab({ uploadId, fileText, fileUrl, subjectName, accessToken, onPlanUpdated }: NotesTabProps) {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [showPdf, setShowPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isPdf = fileUrl?.toLowerCase().endsWith(".pdf");
+  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(fileUrl || "");
+  const isViewable = isPdf || isImage;
+
+  useEffect(() => {
+    if (!fileUrl || !isViewable) return;
+    supabase.storage.from("notes").createSignedUrl(fileUrl, 3600).then(({ data }) => {
+      if (data?.signedUrl) setPdfUrl(data.signedUrl);
+    });
+  }, [fileUrl, isViewable]);
 
   const generateSummary = async () => {
     if (aiSummary) return;
@@ -49,16 +63,13 @@ export function NotesTab({ uploadId, fileText, subjectName, accessToken, onPlanU
       const { error: uploadError } = await supabase.storage.from("notes").upload(path, file);
       if (uploadError) throw uploadError;
 
-      // Read the text from the file for display
       const text = await file.text();
       setAdditionalNotes((prev) => [...prev, text.slice(0, 5000)]);
 
-      // Update the file_text on the upload row to include new content
       const combined = (fileText || "") + "\n\n--- ADDITIONAL NOTES ---\n\n" + text.slice(0, 20000);
       await supabase.from("uploads").update({ file_text: combined.slice(0, 50000) }).eq("id", uploadId);
 
       toast.success("Notes uploaded! Your study plan will be updated.");
-      // Reset the AI summary so it regenerates with new content
       setAiSummary(null);
       onPlanUpdated?.();
     } catch {
@@ -100,13 +111,53 @@ export function NotesTab({ uploadId, fileText, subjectName, accessToken, onPlanU
         )}
       </Card>
 
-      {/* Original Notes */}
+      {/* Original Notes - with PDF/Image viewer */}
       <Card className="glass-card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <FileText className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Your Notes</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Your Notes</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            {isViewable && pdfUrl && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPdf(!showPdf)}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  {showPdf ? "Show Text" : isPdf ? "View PDF" : "View Image"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                >
+                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download>
+                    <FileDown className="h-4 w-4" />
+                  </a>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        {fileText ? (
+
+        {showPdf && pdfUrl ? (
+          isPdf ? (
+            <div className="rounded-lg overflow-hidden border border-border bg-muted/30">
+              <iframe
+                src={pdfUrl}
+                className="w-full h-[600px]"
+                title="Notes PDF viewer"
+              />
+            </div>
+          ) : (
+            <div className="rounded-lg overflow-hidden border border-border bg-muted/30 flex items-center justify-center p-4">
+              <img src={pdfUrl} alt="Uploaded notes" className="max-w-full max-h-[600px] object-contain rounded" />
+            </div>
+          )
+        ) : fileText ? (
           <ScrollArea className="max-h-[300px]">
             <pre className="text-sm text-foreground/80 whitespace-pre-wrap font-sans leading-relaxed">
               {fileText.slice(0, 10000)}
