@@ -140,6 +140,7 @@ function DashboardPage() {
           <CoachTab
             noteContext={upload?.file_text ?? ""}
             subjectName={upload?.subject_name ?? ""}
+            accessToken={session?.access_token ?? ""}
           />
         )}
       </div>

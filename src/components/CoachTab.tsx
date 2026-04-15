@@ -10,7 +10,7 @@ interface Message {
   content: string;
 }
 
-export function CoachTab({ noteContext, subjectName }: { noteContext: string; subjectName: string }) {
+export function CoachTab({ noteContext, subjectName, accessToken }: { noteContext: string; subjectName: string; accessToken: string }) {
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: `Hi! I'm your AI study coach for **${subjectName}**. Ask me anything about your notes!` },
   ]);
@@ -37,6 +37,7 @@ export function CoachTab({ noteContext, subjectName }: { noteContext: string; su
           message: msg,
           noteContext,
           subjectName,
+          accessToken,
           history: messages.filter((m) => m.role !== "assistant" || messages.indexOf(m) > 0).map((m) => ({
             role: m.role,
             content: m.content,
