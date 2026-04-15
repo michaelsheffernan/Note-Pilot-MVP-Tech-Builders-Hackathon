@@ -1,9 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, Plus } from "lucide-react";
+import { LogOut, Plus, ArrowLeft } from "lucide-react";
 import { CalendarStudyPlan } from "@/components/CalendarStudyPlan";
 import { FlashcardsTab } from "@/components/FlashcardsTab";
 import { CoachTab } from "@/components/CoachTab";
@@ -95,7 +95,6 @@ function DashboardPage() {
   const totalDays = plan.length;
   const completedCount = completed.size;
   const totalMinutes = plan.reduce((sum, d) => sum + d.estimated_minutes, 0);
-  const completedMinutes = plan.filter((d) => completed.has(d.day)).reduce((sum, d) => sum + d.estimated_minutes, 0);
   const progressPct = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
 
   const tabs: { key: Tab; label: string }[] = [
@@ -106,10 +105,14 @@ function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
       <header className="border-b border-border bg-card">
         <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-xl font-bold text-foreground">StudySync</span>
+          <div className="flex items-center gap-3">
+            <Link to="/studies" className="text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <span className="text-xl font-bold text-foreground">StudySync</span>
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New
