@@ -1,13 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, BookOpen, LogOut } from "lucide-react";
+import { UploadCloud, FileText, BookOpen, LogOut, Sparkles, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/upload")({
@@ -19,6 +18,14 @@ export const Route = createFileRoute("/upload")({
   }),
   component: UploadPage,
 });
+
+const tips = [
+  "Upload clear, readable notes",
+  "Include headings and key terms",
+  "More detail = better study plan",
+];
+
+const fileTypes = ["PDF", "DOCX", "JPG", "PNG"];
 
 function UploadPage() {
   const { user, loading, signOut } = useAuth();
@@ -93,7 +100,7 @@ function UploadPage() {
       <div className="mx-auto max-w-lg px-6 py-16">
         <h1 className="text-3xl font-bold text-foreground text-center">Upload Your Notes</h1>
         <p className="mt-2 text-center text-muted-foreground text-sm">
-          Claude will read your notes and build everything automatically
+          AI will read your notes and build everything automatically
         </p>
 
         <form onSubmit={handleSubmit} className="mt-10 space-y-6">
@@ -102,7 +109,7 @@ function UploadPage() {
             onDrop={handleDrop}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
-            className={`glass-card flex cursor-pointer flex-col items-center justify-center p-10 text-center transition-colors ${
+            className={`glass-card flex cursor-pointer flex-col items-center justify-center p-10 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
               dragOver ? "border-primary bg-primary/5" : ""
             }`}
           >
@@ -113,9 +120,9 @@ function UploadPage() {
               </div>
             ) : (
               <>
-                <Upload className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-foreground font-medium">Drop your file here or click to browse</p>
-                <p className="mt-1 text-xs text-muted-foreground">PDF, DOCX, JPG, PNG</p>
+                <UploadCloud className="h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-foreground font-medium">Drag and drop your notes here</p>
+                <p className="mt-1 text-xs text-muted-foreground">Supports PDF, DOCX, JPG, PNG</p>
               </>
             )}
             <input
@@ -125,6 +132,14 @@ function UploadPage() {
               accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            {fileTypes.map((t) => (
+              <span key={t} className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
+                {t}
+              </span>
+            ))}
           </div>
 
           <div>
@@ -152,10 +167,24 @@ function UploadPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full" size="lg" disabled={!isReady || uploading}>
+          <Button type="submit" className="w-full gap-2" size="lg" disabled={!isReady || uploading}>
+            <Sparkles className="h-4 w-4" />
             {uploading ? "Uploading..." : "Generate My Study Plan"}
           </Button>
         </form>
+
+        {/* Tips */}
+        <div className="mt-12">
+          <h3 className="text-center text-sm font-semibold text-foreground mb-4">Tips for best results</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {tips.map((tip) => (
+              <div key={tip} className="flex items-start gap-2 rounded-xl bg-secondary/50 p-3">
+                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <p className="text-xs text-muted-foreground">{tip}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
