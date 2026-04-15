@@ -13,14 +13,19 @@ export const analyseNotes = createServerFn({ method: "POST" })
     }) => input
   )
   .handler(async ({ data }) => {
-    const supabaseUrl = process.env.SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+
+    if (!supabaseUrl || !serviceKey || !publishableKey) {
+      throw new Error("Missing Supabase environment variables. Ensure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_PUBLISHABLE_KEY are set.");
+    }
+
     const supabase = createClient<Database>(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
     // Get user from access token
-    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
     const userClient = createClient<Database>(supabaseUrl, publishableKey, {
       global: { headers: { Authorization: `Bearer ${data.accessToken}` } },
       auth: { persistSession: false, autoRefreshToken: false },
