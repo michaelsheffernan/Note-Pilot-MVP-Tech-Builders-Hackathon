@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UploadCloud, FileText, LogOut, Sparkles, ArrowRight, ArrowLeft } from "lucide-react";
+import { UploadCloud, FileText, Sparkles, ArrowRight, ArrowLeft } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { format, addDays } from "date-fns";
@@ -175,9 +176,7 @@ function UploadPage() {
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
         <span className="text-xl font-bold text-foreground">StudySync</span>
-        <Button variant="ghost" onClick={signOut} size="sm">
-          <LogOut className="h-4 w-4 mr-1" /> Sign Out
-        </Button>
+        <UserMenu />
       </header>
 
       <div className="mx-auto max-w-lg px-6 py-12">

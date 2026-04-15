@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { LogOut, Plus, ArrowLeft } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
 import { CalendarStudyPlan } from "@/components/CalendarStudyPlan";
 import { FlashcardsTab } from "@/components/FlashcardsTab";
 import { CoachTab } from "@/components/CoachTab";
@@ -128,9 +129,7 @@ function DashboardPage() {
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New
             </Button>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <UserMenu />
           </div>
         </div>
       </header>
