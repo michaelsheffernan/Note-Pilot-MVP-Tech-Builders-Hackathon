@@ -28,7 +28,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/upload" });
+    if (!loading && user) navigate({ to: "/studies" });
   }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +43,7 @@ function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/upload" });
+        navigate({ to: "/studies" });
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");

@@ -1,0 +1,154 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
+import { LogOut, Plus, ArrowRight, Trash2 } from "lucide-react";
+import { differenceInDays, parseISO, format } from "date-fns";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/studies")({
+  head: () => ({
+    meta: [
+      { title: "My Studies — StudySync" },
+      { name: "description", content: "View all your study plans." },
+    ],
+  }),
+  component: StudiesPage,
+});
+
+interface UploadRow {
+  id: string;
+  subject_name: string;
+  test_date: string;
+  created_at: string;
+  file_url: string;
+}
+
+function StudiesPage() {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [uploads, setUploads] = useState<UploadRow[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/auth" });
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("uploads")
+        .select("id, subject_name, test_date, created_at, file_url")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) setUploads(data);
+      setDataLoading(false);
+    })();
+  }, [user]);
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("uploads").delete().eq("id", id);
+    if (error) {
+      toast.error("Failed to delete");
+      return;
+    }
+    setUploads((prev) => prev.filter((u) => u.id !== id));
+    toast.success("Study plan deleted");
+  };
+
+  if (loading || dataLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card">
+        <div className="flex items-center justify-between px-6 py-4">
+          <span className="text-xl font-bold text-foreground">StudySync</span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
+              <Plus className="h-4 w-4 mr-1" /> New
+            </Button>
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-foreground">My Studies</h1>
+          <p className="text-sm text-muted-foreground mt-1">All your study plans in one place</p>
+        </div>
+
+        {uploads.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground mb-4">You haven't created any study plans yet.</p>
+            <Button onClick={() => navigate({ to: "/upload" })}>
+              <Plus className="h-4 w-4 mr-1" /> Create Your First Plan
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {uploads.map((upload, i) => {
+              const daysUntilTest = Math.max(0, differenceInDays(parseISO(upload.test_date), new Date()));
+              const isPast = daysUntilTest === 0;
+
+              return (
+                <div
+                  key={upload.id}
+                  className="glass-card group flex items-center justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg animate-fade-in"
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  <Link
+                    to="/dashboard"
+                    search={{ uploadId: upload.id }}
+                    className="flex-1 min-w-0"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+                        {upload.subject_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-foreground truncate">{upload.subject_name}</h3>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-xs text-muted-foreground">
+                            Created {format(parseISO(upload.created_at), "MMM d, yyyy")}
+                          </span>
+                          <span className={`text-xs font-medium ${isPast ? "text-muted-foreground" : "text-primary"}`}>
+                            {isPast ? "Exam passed" : `${daysUntilTest} day${daysUntilTest !== 1 ? "s" : ""} left`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+
+                  <div className="flex items-center gap-1 ml-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.preventDefault(); handleDelete(upload.id); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Link to="/dashboard" search={{ uploadId: upload.id }}>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
