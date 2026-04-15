@@ -84,6 +84,16 @@ function ProcessingPage() {
 
         if (!upload) throw new Error("Upload not found");
 
+        // Retrieve extra context from localStorage
+        let extraContext: Record<string, string> = {};
+        try {
+          const stored = localStorage.getItem(`upload_context_${uploadId}`);
+          if (stored) {
+            extraContext = JSON.parse(stored);
+            localStorage.removeItem(`upload_context_${uploadId}`);
+          }
+        } catch { /* ignore */ }
+
         await analyseNotes({
           data: {
             uploadId: upload.id,
@@ -91,6 +101,7 @@ function ProcessingPage() {
             testDate: upload.test_date,
             fileUrl: upload.file_url,
             accessToken: session.access_token,
+            extraContext,
           },
         });
 
@@ -126,16 +137,14 @@ function ProcessingPage() {
             <div
               key={i}
               className="h-2 w-2 rounded-full bg-primary"
-              style={{
-                animation: `pulse-dot 1.4s ease-in-out ${i * 0.2}s infinite`,
-              }}
+              style={{ animation: `pulse-dot 1.4s ease-in-out ${i * 0.2}s infinite` }}
             />
           ))}
         </div>
         <p className="mt-6 text-sm text-muted-foreground">
           This usually takes 20–40 seconds
         </p>
-        <p className="mt-6 rounded-xl bg-secondary/50 px-5 py-3 text-center text-xs text-muted-foreground italic">
+        <p className="mt-6 rounded-xl bg-secondary/50 px-5 py-3 text-center text-xs text-muted-foreground italic transition-all duration-500">
           {funFacts[factIndex]}
         </p>
       </div>
