@@ -85,6 +85,10 @@ function UploadPage() {
   const [weakTopics, setWeakTopics] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
 
+  // Days per week & which days
+  const [daysPerWeek, setDaysPerWeek] = useState("");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -146,6 +150,8 @@ function UploadPage() {
         weakTopics,
         additionalNotes,
         studyMode,
+        daysPerWeek,
+        studyDays: selectedDays.join(","),
       };
       if (studyMode === "duration") {
         const numDays = durationPreset === "custom" ? customDays : durationPreset;
@@ -352,6 +358,29 @@ function UploadPage() {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <Label className="mb-2 block">How many days per week?</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {["3", "4", "5", "6", "7"].map((d) => (
+                    <button key={d} onClick={() => setDaysPerWeek(d)}
+                      className={`rounded-xl border p-3 text-sm transition-all duration-200 hover:border-primary/50 ${daysPerWeek === d ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground"}`}
+                    >{d} days</button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Which days do you want to study?</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                    <button key={day} onClick={() => setSelectedDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day])}
+                      className={`rounded-xl border p-3 text-sm transition-all duration-200 hover:border-primary/50 ${selectedDays.includes(day) ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground"}`}
+                    >{day.slice(0, 3)}</button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <Label className="mb-2 block">Learning Style</Label>
                 <div className="grid grid-cols-2 gap-2">
