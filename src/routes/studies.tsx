@@ -2,8 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
-import { LogOut, Plus, ArrowRight, Trash2 } from "lucide-react";
+import { Plus, ArrowRight, Trash2 } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { toast } from "sonner";
 import { MasterCalendar, type MasterStudyDay } from "@/components/MasterCalendar";
@@ -33,6 +35,7 @@ interface PlanRow {
 
 function StudiesPage() {
   const { user, loading, signOut } = useAuth();
+  const { displayName } = useProfile();
   const navigate = useNavigate();
   const [uploads, setUploads] = useState<UploadRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
@@ -111,9 +114,7 @@ function StudiesPage() {
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New
             </Button>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -122,7 +123,7 @@ function StudiesPage() {
         {/* Master Calendar */}
         {masterDays.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-lg font-bold text-foreground mb-4">Study Calendar</h2>
+            <h2 className="text-lg font-bold text-foreground mb-4">{displayName}'s Study Calendar</h2>
             <div className="glass-card p-5">
               <MasterCalendar
                 days={masterDays}
@@ -133,7 +134,7 @@ function StudiesPage() {
         )}
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">My Studies</h1>
+          <h1 className="text-2xl font-bold text-foreground">{displayName}'s Studies</h1>
           <p className="text-sm text-muted-foreground mt-1">All your study plans in one place</p>
         </div>
 
