@@ -108,6 +108,7 @@ function DashboardPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "plan", label: "Study Plan" },
+    { key: "notes", label: "Notes" },
     { key: "flashcards", label: "Flashcards" },
     { key: "coach", label: "AI Coach" },
   ];
