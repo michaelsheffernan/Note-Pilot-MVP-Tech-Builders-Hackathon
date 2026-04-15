@@ -7,6 +7,7 @@ import { LogOut, Plus, ArrowLeft } from "lucide-react";
 import { CalendarStudyPlan } from "@/components/CalendarStudyPlan";
 import { FlashcardsTab } from "@/components/FlashcardsTab";
 import { CoachTab } from "@/components/CoachTab";
+import { NotesTab } from "@/components/NotesTab";
 import { Progress } from "@/components/ui/progress";
 import { differenceInDays, parseISO } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-type Tab = "plan" | "flashcards" | "coach";
+type Tab = "plan" | "notes" | "flashcards" | "coach";
 
 interface StudyDay {
   day: number;
@@ -107,6 +108,7 @@ function DashboardPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "plan", label: "Study Plan" },
+    { key: "notes", label: "Notes" },
     { key: "flashcards", label: "Flashcards" },
     { key: "coach", label: "AI Coach" },
   ];
@@ -192,6 +194,20 @@ function DashboardPage() {
         <div className="animate-fade-in">
           {activeTab === "plan" && (
             <CalendarStudyPlan plan={plan} completed={completed} onToggleComplete={toggleComplete} onEditDay={handleEditDay} onDeleteDay={handleDeleteDay} />
+          )}
+          {activeTab === "notes" && (
+            <NotesTab
+              uploadId={uploadId}
+              fileText={upload?.file_text ?? ""}
+              subjectName={upload?.subject_name ?? ""}
+              accessToken={session?.access_token ?? ""}
+              onPlanUpdated={() => {
+                // Re-fetch upload data to reflect new notes
+                supabase.from("uploads").select("subject_name, test_date, file_text, created_at").eq("id", uploadId).single().then(({ data }) => {
+                  if (data) setUpload(data);
+                });
+              }}
+            />
           )}
           {activeTab === "flashcards" && <FlashcardsTab cards={cards} />}
           {activeTab === "coach" && (
