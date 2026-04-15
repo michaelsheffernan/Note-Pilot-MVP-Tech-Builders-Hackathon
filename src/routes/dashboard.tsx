@@ -7,6 +7,7 @@ import { LogOut, Plus, ArrowLeft } from "lucide-react";
 import { CalendarStudyPlan } from "@/components/CalendarStudyPlan";
 import { FlashcardsTab } from "@/components/FlashcardsTab";
 import { CoachTab } from "@/components/CoachTab";
+import { NotesTab } from "@/components/NotesTab";
 import { Progress } from "@/components/ui/progress";
 import { differenceInDays, parseISO } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
