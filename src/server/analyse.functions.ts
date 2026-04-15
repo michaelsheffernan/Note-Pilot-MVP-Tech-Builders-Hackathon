@@ -82,111 +82,22 @@ export const analyseNotes = createServerFn({ method: "POST" })
     const testDate = new Date(data.testDate);
     const daysUntilTest = Math.max(1, Math.ceil((testDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
 
-    // Call AI — LOVABLE_API_KEY is not in process.env for server functions,
-    // so we call the gateway using the supabase edge function pattern instead.
-    // Use a dedicated edge function, or call the gateway directly if key is available.
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) {
-      // Fallback: call via supabase edge function
-      const { data: aiData, error: aiError } = await supabase.functions.invoke("analyse-ai", {
-        body: {
-          subjectName: data.subjectName,
-          testDate: data.testDate,
-          daysUntilTest,
-          noteText: noteText.slice(0, 15000),
-          fileBase64: fileBase64 || undefined,
-          fileMimeType: fileMimeType || undefined,
-          uploadId: data.uploadId,
-          userId,
-        },
-      });
-      if (aiError) {
-        console.error("Edge function error:", aiError);
-        throw new Error("AI generation failed. Please try again.");
-      }
-      return aiData as { success: boolean };
-    }
-
-    // Direct gateway call (if LOVABLE_API_KEY is in process.env)
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+    // Always use the edge function — it has LOVABLE_API_KEY and supports multimodal
+    const { data: aiData, error: aiError } = await supabase.functions.invoke("analyse-ai", {
+      body: {
+        subjectName: data.subjectName,
+        testDate: data.testDate,
+        daysUntilTest,
+        noteText: noteText.slice(0, 15000),
+        fileBase64: fileBase64 || undefined,
+        fileMimeType: fileMimeType || undefined,
+        uploadId: data.uploadId,
+        userId,
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "user",
-            content: `You are a study planning AI. Based on the following student notes for "${data.subjectName}" with a test in ${daysUntilTest} days (test date: ${data.testDate}), generate:
-
-1. A study plan as a JSON array with this schema: [{"day": 1, "date": "YYYY-MM-DD", "topics": ["topic1", "topic2"], "estimated_minutes": 60}]
-   - Spread across ${daysUntilTest} days starting from today (${today.toISOString().split("T")[0]})
-   - Each day should have 1-3 focused topics
-   - Estimated minutes between 30-90
-
-2. Flashcards as a JSON array with this schema: [{"question": "...", "answer": "..."}]
-   - Generate 15-30 flashcards covering the key concepts
-   - Questions should test understanding, not just recall
-
-STUDENT NOTES:
-${noteText.slice(0, 15000)}
-
-RESPOND ONLY WITH VALID JSON in this exact format, no other text:
-{"study_plan": [...], "flashcards": [...]}`,
-          },
-        ],
-        max_tokens: 4000,
-        temperature: 0.7,
-      }),
     });
-
-    if (!aiResponse.ok) {
-      const errBody = await aiResponse.text();
-      console.error("AI API error:", errBody);
+    if (aiError) {
+      console.error("Edge function error:", aiError);
       throw new Error("AI generation failed. Please try again.");
     }
-
-    const aiResult = await aiResponse.json();
-    const content = aiResult.choices?.[0]?.message?.content ?? "";
-
-    // Robust JSON extraction
-    let parsed: { study_plan: unknown[]; flashcards: unknown[] };
-    try {
-      let cleaned = content.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-      const jsonStart = cleaned.indexOf("{");
-      const jsonEnd = cleaned.lastIndexOf("}");
-      if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found");
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-      cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI response. Please try again.");
-    }
-
-    // Store study plan
-    const { error: planError } = await supabase.from("study_plans").insert({
-      user_id: userId,
-      upload_id: data.uploadId,
-      plan_json: parsed.study_plan as unknown as Database["public"]["Tables"]["study_plans"]["Insert"]["plan_json"],
-    });
-    if (planError) {
-      console.error("Plan insert error:", planError);
-      throw new Error("Failed to save study plan");
-    }
-
-    // Store flashcards
-    const { error: cardsError } = await supabase.from("flashcards").insert({
-      user_id: userId,
-      upload_id: data.uploadId,
-      cards_json: parsed.flashcards as unknown as Database["public"]["Tables"]["flashcards"]["Insert"]["cards_json"],
-    });
-    if (cardsError) {
-      console.error("Cards insert error:", cardsError);
-      throw new Error("Failed to save flashcards");
-    }
-
-    return { success: true };
+    return aiData as { success: boolean };
   });
