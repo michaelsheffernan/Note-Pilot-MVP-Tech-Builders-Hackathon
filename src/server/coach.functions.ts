@@ -32,7 +32,7 @@ ${data.noteContext.slice(0, 10000)}`,
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "google/gemini-2.5-flash",
         messages,
         max_tokens: 1500,
         temperature: 0.7,
