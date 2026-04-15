@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { LogOut, Plus, ArrowRight, Trash2 } from "lucide-react";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { toast } from "sonner";
+import { MasterCalendar, type MasterStudyDay } from "@/components/MasterCalendar";
 
 export const Route = createFileRoute("/studies")({
   head: () => ({
@@ -25,10 +26,16 @@ interface UploadRow {
   file_url: string;
 }
 
+interface PlanRow {
+  upload_id: string;
+  plan_json: unknown;
+}
+
 function StudiesPage() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [uploads, setUploads] = useState<UploadRow[]>([]);
+  const [plans, setPlans] = useState<PlanRow[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -38,15 +45,43 @@ function StudiesPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("uploads")
-        .select("id, subject_name, test_date, created_at, file_url")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (data) setUploads(data);
+      const [uploadsRes, plansRes] = await Promise.all([
+        supabase
+          .from("uploads")
+          .select("id, subject_name, test_date, created_at, file_url")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("study_plans")
+          .select("upload_id, plan_json")
+          .eq("user_id", user.id),
+      ]);
+      if (uploadsRes.data) setUploads(uploadsRes.data);
+      if (plansRes.data) setPlans(plansRes.data as PlanRow[]);
       setDataLoading(false);
     })();
   }, [user]);
+
+  // Build master calendar days from all plans
+  const masterDays: MasterStudyDay[] = useMemo(() => {
+    const result: MasterStudyDay[] = [];
+    for (const plan of plans) {
+      const upload = uploads.find((u) => u.id === plan.upload_id);
+      if (!upload) continue;
+      const days = plan.plan_json as Array<{ day: number; date: string; topics: string[]; estimated_minutes: number }>;
+      if (!Array.isArray(days)) continue;
+      for (const d of days) {
+        result.push({
+          date: d.date,
+          subject: upload.subject_name,
+          uploadId: upload.id,
+          topics: d.topics || [],
+          estimated_minutes: d.estimated_minutes || 0,
+        });
+      }
+    }
+    return result;
+  }, [uploads, plans]);
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("uploads").delete().eq("id", id);
@@ -55,6 +90,7 @@ function StudiesPage() {
       return;
     }
     setUploads((prev) => prev.filter((u) => u.id !== id));
+    setPlans((prev) => prev.filter((p) => p.upload_id !== id));
     toast.success("Study plan deleted");
   };
 
@@ -82,8 +118,21 @@ function StudiesPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="mb-8">
+      <div className="mx-auto max-w-4xl px-6 py-8">
+        {/* Master Calendar */}
+        {masterDays.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-lg font-bold text-foreground mb-4">Study Calendar</h2>
+            <div className="glass-card p-5">
+              <MasterCalendar
+                days={masterDays}
+                onOpenStudy={(uploadId) => navigate({ to: "/dashboard", search: { uploadId } })}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">My Studies</h1>
           <p className="text-sm text-muted-foreground mt-1">All your study plans in one place</p>
         </div>
