@@ -38,12 +38,12 @@ function LandingPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <section className="flex min-h-screen flex-col items-center justify-center px-6 pt-20 text-center">
-        <h1 className="max-w-3xl text-5xl font-bold leading-tight tracking-tight text-foreground md:text-6xl lg:text-7xl">
+      <section className="grid-bg flex min-h-screen flex-col items-center justify-center px-6 pt-20 text-center">
+        <h1 className="max-w-[800px] text-5xl font-semibold leading-[56px] tracking-[-0.02em] text-foreground md:text-6xl lg:text-[48px]">
           Turn your notes into a full study plan.{" "}
           <span className="text-primary">Instantly.</span>
         </h1>
-        <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+        <p className="mt-6 max-w-xl text-base leading-6 text-muted-foreground">
           Upload your notes, set your test date. StudySync builds your study plan, flashcards, and personal AI coach automatically.
         </p>
         <Button variant="hero" className="mt-10" asChild>
@@ -51,15 +51,15 @@ function LandingPage() {
         </Button>
       </section>
 
-      <section className="mx-auto max-w-5xl px-6 pb-24">
+      <section className="mx-auto max-w-[1200px] px-6 py-20">
         <div className="grid gap-6 md:grid-cols-3">
           {features.map((f) => (
-            <div key={f.title} className="glass-card p-8 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
+            <div key={f.title} className="glass-card p-6 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-blue-soft">
                 <f.icon className="h-7 w-7 text-primary" />
               </div>
               <h3 className="text-lg font-semibold text-foreground">{f.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{f.description}</p>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">{f.description}</p>
             </div>
           ))}
         </div>
