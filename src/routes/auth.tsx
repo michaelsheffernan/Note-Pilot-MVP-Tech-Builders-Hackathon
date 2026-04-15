@@ -28,7 +28,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/upload" });
+    if (!loading && user) navigate({ to: "/studies" });
   }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
