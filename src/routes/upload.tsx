@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UploadCloud, FileText, BookOpen, LogOut, Sparkles, ArrowRight, ArrowLeft } from "lucide-react";
+import { UploadCloud, FileText, LogOut, Sparkles, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -48,6 +48,13 @@ const studyStyleOptions = [
   { value: "mixed", label: "Mix of all", desc: "All styles" },
 ];
 
+const durationPresets = [
+  { value: "7", label: "1 Week" },
+  { value: "14", label: "2 Weeks" },
+  { value: "30", label: "1 Month" },
+  { value: "custom", label: "Custom" },
+];
+
 function UploadPage() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -59,10 +66,18 @@ function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
+  // Study mode: "deadline" = studying for a specific test date, "duration" = studying for a set number of days
+  const [studyMode, setStudyMode] = useState<"deadline" | "duration" | "">("");
+
   const [subjectName, setSubjectName] = useState("");
   const [testDate, setTestDate] = useState("");
   const [examType, setExamType] = useState("");
   const [difficulty, setDifficulty] = useState("");
+
+  // Duration mode
+  const [durationPreset, setDurationPreset] = useState("");
+  const [customDays, setCustomDays] = useState("");
+  const [studyGoal, setStudyGoal] = useState("");
 
   const [studyHours, setStudyHours] = useState("");
   const [studyStyle, setStudyStyle] = useState("");
@@ -84,8 +99,26 @@ function UploadPage() {
   }, []);
 
   const canProceedStep1 = !!file;
-  const canProceedStep2 = subjectName.trim() && testDate && examType && difficulty;
+
+  const canProceedStep2 = (() => {
+    if (!subjectName.trim() || !studyMode || !difficulty) return false;
+    if (studyMode === "deadline") return !!testDate && !!examType;
+    if (studyMode === "duration") {
+      if (!durationPreset) return false;
+      if (durationPreset === "custom" && (!customDays || Number(customDays) < 1)) return false;
+      return true;
+    }
+    return false;
+  })();
+
   const canProceedStep3 = studyHours && studyStyle;
+
+  // Compute effective test date for duration mode
+  const getEffectiveTestDate = () => {
+    if (studyMode === "deadline") return testDate;
+    const numDays = durationPreset === "custom" ? Number(customDays) : Number(durationPreset);
+    return format(addDays(new Date(), numDays), "yyyy-MM-dd");
+  };
 
   const handleSubmit = async () => {
     if (!file || !user) return;
@@ -95,16 +128,32 @@ function UploadPage() {
       const { error: uploadError } = await supabase.storage.from("notes").upload(filePath, file);
       if (uploadError) throw uploadError;
 
+      const effectiveTestDate = getEffectiveTestDate();
+
       const { data: uploadData, error: insertError } = await supabase
         .from("uploads")
-        .insert({ user_id: user.id, file_url: filePath, subject_name: subjectName, test_date: testDate })
+        .insert({ user_id: user.id, file_url: filePath, subject_name: subjectName, test_date: effectiveTestDate })
         .select()
         .single();
       if (insertError) throw insertError;
 
-      const extraContext = { examType, difficulty, studyHours, studyStyle, focusAreas, weakTopics, additionalNotes };
-      localStorage.setItem(`upload_context_${uploadData.id}`, JSON.stringify(extraContext));
+      const extraContext: Record<string, string> = {
+        examType: studyMode === "deadline" ? examType : "general_study",
+        difficulty,
+        studyHours,
+        studyStyle,
+        focusAreas,
+        weakTopics,
+        additionalNotes,
+        studyMode,
+      };
+      if (studyMode === "duration") {
+        const numDays = durationPreset === "custom" ? customDays : durationPreset;
+        extraContext.studyDuration = `${numDays} days`;
+        if (studyGoal) extraContext.studyGoal = studyGoal;
+      }
 
+      localStorage.setItem(`upload_context_${uploadData.id}`, JSON.stringify(extraContext));
       navigate({ to: "/processing", search: { uploadId: uploadData.id } });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -181,7 +230,7 @@ function UploadPage() {
         {step === 2 && (
           <div className="animate-fade-in space-y-6">
             <div className="text-center">
-              <h1 className="text-3xl font-bold text-foreground">About Your Exam</h1>
+              <h1 className="text-3xl font-bold text-foreground">About Your Study</h1>
               <p className="mt-2 text-sm text-muted-foreground">Help us personalise your study plan</p>
             </div>
 
@@ -190,33 +239,92 @@ function UploadPage() {
                 <Label htmlFor="subject">Subject Name</Label>
                 <Input id="subject" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g. Biology, Organic Chemistry" className="mt-1" />
               </div>
+
+              {/* Study Mode Selection */}
               <div>
-                <Label htmlFor="testDate">Test / Exam Date</Label>
-                <Input id="testDate" type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="mt-1" min={format(new Date(), "yyyy-MM-dd")} />
-              </div>
-              <div>
-                <Label className="mb-2 block">Exam Type</Label>
+                <Label className="mb-2 block">What are you studying for?</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {examTypes.map((et) => (
-                    <button key={et.value} onClick={() => setExamType(et.value)}
-                      className={`rounded-xl border p-3 text-sm transition-all duration-200 hover:border-primary/50 ${examType === et.value ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground"}`}
-                    >{et.label}</button>
-                  ))}
+                  <button
+                    onClick={() => setStudyMode("deadline")}
+                    className={`rounded-xl border p-4 text-left transition-all duration-200 hover:border-primary/50 ${studyMode === "deadline" ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
+                    <span className="text-sm font-medium text-foreground block">Upcoming Exam</span>
+                    <span className="text-xs text-muted-foreground">I have a specific test date</span>
+                  </button>
+                  <button
+                    onClick={() => setStudyMode("duration")}
+                    className={`rounded-xl border p-4 text-left transition-all duration-200 hover:border-primary/50 ${studyMode === "duration" ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
+                    <span className="text-sm font-medium text-foreground block">General Study</span>
+                    <span className="text-xs text-muted-foreground">I want to study for a set period</span>
+                  </button>
                 </div>
               </div>
-              <div>
-                <Label className="mb-2 block">Your Knowledge Level</Label>
-                <div className="space-y-2">
-                  {difficultyLevels.map((d) => (
-                    <button key={d.value} onClick={() => setDifficulty(d.value)}
-                      className={`w-full rounded-xl border p-3 text-left transition-all duration-200 hover:border-primary/50 ${difficulty === d.value ? "border-primary bg-primary/5" : "border-border"}`}
-                    >
-                      <span className="text-sm font-medium text-foreground">{d.label}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{d.desc}</span>
-                    </button>
-                  ))}
+
+              {/* Deadline-specific fields */}
+              {studyMode === "deadline" && (
+                <div className="animate-fade-in space-y-4">
+                  <div>
+                    <Label htmlFor="testDate">Test / Exam Date</Label>
+                    <Input id="testDate" type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="mt-1" min={format(new Date(), "yyyy-MM-dd")} />
+                  </div>
+                  <div>
+                    <Label className="mb-2 block">Exam Type</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {examTypes.map((et) => (
+                        <button key={et.value} onClick={() => setExamType(et.value)}
+                          className={`rounded-xl border p-3 text-sm transition-all duration-200 hover:border-primary/50 ${examType === et.value ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground"}`}
+                        >{et.label}</button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Duration-specific fields */}
+              {studyMode === "duration" && (
+                <div className="animate-fade-in space-y-4">
+                  <div>
+                    <Label className="mb-2 block">How long do you want to study?</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {durationPresets.map((dp) => (
+                        <button key={dp.value} onClick={() => setDurationPreset(dp.value)}
+                          className={`rounded-xl border p-3 text-sm transition-all duration-200 hover:border-primary/50 ${durationPreset === dp.value ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground"}`}
+                        >{dp.label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {durationPreset === "custom" && (
+                    <div className="animate-fade-in">
+                      <Label htmlFor="customDays">Number of Days</Label>
+                      <Input id="customDays" type="number" value={customDays} onChange={(e) => setCustomDays(e.target.value)} placeholder="e.g. 21" className="mt-1" min="1" max="365" />
+                    </div>
+                  )}
+
+                  <div>
+                    <Label htmlFor="studyGoal">What's your goal? <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <Input id="studyGoal" value={studyGoal} onChange={(e) => setStudyGoal(e.target.value)} placeholder="e.g. Master the basics, Prepare for next semester" className="mt-1" />
+                  </div>
+                </div>
+              )}
+
+              {/* Shared: difficulty */}
+              {studyMode && (
+                <div className="animate-fade-in">
+                  <Label className="mb-2 block">Your Knowledge Level</Label>
+                  <div className="space-y-2">
+                    {difficultyLevels.map((d) => (
+                      <button key={d.value} onClick={() => setDifficulty(d.value)}
+                        className={`w-full rounded-xl border p-3 text-left transition-all duration-200 hover:border-primary/50 ${difficulty === d.value ? "border-primary bg-primary/5" : "border-border"}`}
+                      >
+                        <span className="text-sm font-medium text-foreground">{d.label}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{d.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
