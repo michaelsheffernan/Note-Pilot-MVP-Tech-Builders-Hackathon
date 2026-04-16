@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import logo from "@/assets/note-pilot-logo.png";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -145,7 +146,7 @@ function DashboardPage() {
             <Link to="/studies" className="text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <span className="text-xl font-bold text-foreground">Note Pilot</span>
+            <Link to="/studies"><img src={logo} alt="Note Pilot" className="h-10 w-10 object-contain" /></Link>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>

@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import logo from "@/assets/note-pilot-logo.png";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -180,7 +181,7 @@ function UploadPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <span className="text-xl font-bold text-foreground">Note Pilot</span>
+        <Link to="/studies"><img src={logo} alt="Note Pilot" className="h-10 w-10 object-contain" /></Link>
         <UserMenu />
       </header>
 

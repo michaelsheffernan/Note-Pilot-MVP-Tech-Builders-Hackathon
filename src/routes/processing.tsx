@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
-import { BookOpen } from "lucide-react";
+import logo from "@/assets/note-pilot-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { analyseNotes } from "@/server/analyse.functions";
@@ -116,13 +116,12 @@ function ProcessingPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="flex flex-col items-center max-w-md w-full">
-        <div className="mb-4 flex items-center gap-2">
-          <BookOpen className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold text-foreground">Note Pilot</span>
+        <div className="mb-4">
+          <img src={logo} alt="Note Pilot" className="h-12 w-12 object-contain" />
         </div>
 
         <div className="relative mb-8">
-          <BookOpen className="h-16 w-16 text-primary animate-pulse" />
+          <img src={logo} alt="Note Pilot" className="h-16 w-16 object-contain animate-pulse" />
         </div>
         <p className="text-xl font-medium text-foreground animate-pulse">
           {statusMessages[msgIndex]}

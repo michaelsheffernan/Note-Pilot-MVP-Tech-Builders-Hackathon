@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import logo from "@/assets/note-pilot-logo.png";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -109,7 +110,7 @@ function StudiesPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-xl font-bold text-foreground">Note Pilot</span>
+          <Link to="/"><img src={logo} alt="Note Pilot" className="h-10 w-10 object-contain" /></Link>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New
