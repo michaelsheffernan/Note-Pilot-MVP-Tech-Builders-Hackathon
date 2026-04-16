@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UploadCloud, FileText, Sparkles, ArrowRight, ArrowLeft } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
@@ -183,7 +184,10 @@ function UploadPage() {
       <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-30">
         <div className="flex items-center justify-between px-6 py-3">
           <Link to="/studies"><img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" /></Link>
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <UserMenu />
+          </div>
         </div>
       </header>
 

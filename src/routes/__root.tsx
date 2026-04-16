@@ -1,5 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/hooks/use-theme";
 
 import appCss from "../styles.css?url";
 
@@ -30,7 +31,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-{ title: "Note Pilot — AI Study Assistant" },
+      { title: "Note Pilot — AI Study Assistant" },
       { name: "description", content: "Turn your notes into a personalised study plan, flashcards, and AI coach." },
     ],
     links: [
@@ -69,9 +70,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <>
+    <ThemeProvider>
       <Outlet />
       <Toaster richColors position="top-center" />
-    </>
+    </ThemeProvider>
   );
 }

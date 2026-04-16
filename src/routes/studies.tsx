@@ -7,6 +7,7 @@ import { useProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight, Trash2 } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { toast } from "sonner";
 import { MasterCalendar, type MasterStudyDay } from "@/components/MasterCalendar";
@@ -114,6 +115,7 @@ function StudiesPage() {
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New
             </Button>
+            <ThemeToggle />
             <UserMenu />
           </div>
         </div>

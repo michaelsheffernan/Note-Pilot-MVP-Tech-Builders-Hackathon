@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowLeft } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { CalendarStudyPlan } from "@/components/CalendarStudyPlan";
 import { FlashcardsTab } from "@/components/FlashcardsTab";
 import { CoachTab } from "@/components/CoachTab";
@@ -159,6 +160,7 @@ function DashboardPage() {
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New
             </Button>
+            <ThemeToggle />
             <UserMenu />
           </div>
         </div>
