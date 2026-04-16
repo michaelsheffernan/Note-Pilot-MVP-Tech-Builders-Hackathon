@@ -33,6 +33,14 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Note Pilot — AI Study Assistant" },
       { name: "description", content: "Turn your notes into a personalised study plan, flashcards, and AI coach." },
+      { property: "og:title", content: "Note Pilot — AI Study Assistant" },
+      { name: "twitter:title", content: "Note Pilot — AI Study Assistant" },
+      { property: "og:description", content: "Turn your notes into a personalised study plan, flashcards, and AI coach." },
+      { name: "twitter:description", content: "Turn your notes into a personalised study plan, flashcards, and AI coach." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1db40b04-7970-4734-8d01-3ef647ce6b6b" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1db40b04-7970-4734-8d01-3ef647ce6b6b" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       {
