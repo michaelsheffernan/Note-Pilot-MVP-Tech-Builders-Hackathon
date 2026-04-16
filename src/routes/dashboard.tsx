@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowLeft } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { CalendarStudyPlan } from "@/components/CalendarStudyPlan";
 import { FlashcardsTab } from "@/components/FlashcardsTab";
 import { CoachTab } from "@/components/CoachTab";
