@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/note-pilot-logo.png";
 
 export function Header() {
@@ -9,6 +10,7 @@ export function Header() {
         <img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" />
       </Link>
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <Button variant="ghost" asChild className="text-sm">
           <Link to="/auth">Login</Link>
         </Button>
