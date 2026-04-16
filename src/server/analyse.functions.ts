@@ -88,7 +88,6 @@ export const analyseNotes = createServerFn({ method: "POST" })
         fileBase64: sendBase64 ? fileBase64 : undefined,
         fileMimeType: sendBase64 ? fileMimeType : undefined,
         uploadId: data.uploadId,
-        userId,
         extraContext: data.extraContext || {},
       },
     });

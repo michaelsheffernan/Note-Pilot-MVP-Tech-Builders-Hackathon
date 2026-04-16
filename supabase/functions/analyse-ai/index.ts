@@ -6,6 +6,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function unauthorizedResponse(msg = "Unauthorized") {
+  return new Response(JSON.stringify({ error: msg }), {
+    status: 401,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function verifyUser(req: Request) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return null;
+
+  const anonClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: { user }, error } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
+  if (error || !user) return null;
+  return user;
+}
+
 function repairAndParseJSON(raw: string): { study_plan: any[]; flashcards: any[] } {
   let cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   const jsonStart = cleaned.indexOf("{");
@@ -115,6 +136,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Verify JWT — derive userId from token, never from body
+    const user = await verifyUser(req);
+    if (!user) return unauthorizedResponse();
+    const userId = user.id;
+
     let body: any;
     try {
       body = await req.json();
@@ -126,11 +152,12 @@ serve(async (req) => {
       });
     }
 
-    const { subjectName, testDate, daysUntilTest, noteText, fileBase64, fileMimeType, uploadId, userId, extraContext } = body;
+    const { subjectName, testDate, daysUntilTest, noteText, fileBase64, fileMimeType, uploadId, extraContext } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // Use service role only for DB writes — userId is verified from JWT above
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
