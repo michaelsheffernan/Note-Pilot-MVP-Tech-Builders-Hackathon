@@ -55,7 +55,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="glass-card w-full max-w-md p-8">
         <div className="mb-2 flex flex-col items-center gap-2">
-          <img src={logo} alt="Note Pilot" className="h-14 w-14 object-contain" />
+          <img src={logo} alt="Note Pilot" className="h-24 w-24 object-contain" />
           <p className="text-sm text-muted-foreground">Your AI study partner</p>
         </div>
 
