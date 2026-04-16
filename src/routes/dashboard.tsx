@@ -138,10 +138,17 @@ function DashboardPage() {
     { key: "settings", label: "Settings" },
   ];
 
+  const statCards = [
+    { value: daysUntilTest, label: "Days Left", suffix: "" },
+    { value: `${completedCount}/${totalDays}`, label: "Days Done", suffix: "" },
+    { value: cards.length, label: "Flashcards", suffix: "" },
+    { value: Math.round(totalMinutes / 60), label: "Total Study", suffix: "h" },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="flex items-center justify-between px-6 py-4">
+      <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <Link to="/studies" className="text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-5 w-5" />
@@ -157,47 +164,38 @@ function DashboardPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-6 py-6">
+      <div className="mx-auto max-w-5xl px-6 py-8">
         {/* Subject header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{upload?.subject_name}</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {daysUntilTest} day{daysUntilTest !== 1 ? "s" : ""} until your exam
-              </p>
-            </div>
+        <div className="mb-8">
+          <div className="mb-5">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">{upload?.subject_name}</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {daysUntilTest} day{daysUntilTest !== 1 ? "s" : ""} until your exam
+            </p>
           </div>
 
           {/* Stats row */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="glass-card p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{daysUntilTest}</p>
-              <p className="text-xs text-muted-foreground mt-1">Days Left</p>
-            </div>
-            <div className="glass-card p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{completedCount}<span className="text-sm font-normal text-muted-foreground">/{totalDays}</span></p>
-              <p className="text-xs text-muted-foreground mt-1">Days Done</p>
-            </div>
-            <div className="glass-card p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{cards.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Flashcards</p>
-            </div>
-            <div className="glass-card p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{Math.round(totalMinutes / 60)}<span className="text-sm font-normal text-muted-foreground">h</span></p>
-              <p className="text-xs text-muted-foreground mt-1">Total Study</p>
-            </div>
+            {statCards.map((stat) => (
+              <div key={stat.label} className="glass-card p-4 text-center group hover:-translate-y-0.5">
+                <p className="text-2xl font-bold text-foreground tabular-nums">
+                  {stat.value}
+                  {stat.suffix && <span className="text-sm font-normal text-muted-foreground">{stat.suffix}</span>}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+              </div>
+            ))}
           </div>
 
           {/* Progress */}
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-5 flex items-center gap-3">
             <Progress value={progressPct} className="h-2 flex-1" />
-            <span className="text-xs font-medium text-primary whitespace-nowrap">{progressPct}% complete</span>
+            <span className="text-xs font-semibold text-primary whitespace-nowrap tabular-nums">{progressPct}%</span>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 flex gap-1 rounded-xl bg-secondary p-1">
+        <div className="mb-6 flex gap-1 rounded-xl bg-secondary/80 p-1 backdrop-blur-sm">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -205,7 +203,7 @@ function DashboardPage() {
               className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 ${
                 activeTab === tab.key
                   ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               }`}
             >
               {tab.label}

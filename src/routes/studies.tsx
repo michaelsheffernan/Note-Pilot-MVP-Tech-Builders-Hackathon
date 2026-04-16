@@ -35,7 +35,7 @@ interface PlanRow {
 }
 
 function StudiesPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const { displayName } = useProfile();
   const navigate = useNavigate();
   const [uploads, setUploads] = useState<UploadRow[]>([]);
@@ -66,7 +66,6 @@ function StudiesPage() {
     })();
   }, [user]);
 
-  // Build master calendar days from all plans
   const masterDays: MasterStudyDay[] = useMemo(() => {
     const result: MasterStudyDay[] = [];
     for (const plan of plans) {
@@ -108,8 +107,8 @@ function StudiesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="flex items-center justify-between px-6 py-4">
+      <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center justify-between px-6 py-3">
           <Link to="/"><img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" /></Link>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
@@ -121,10 +120,18 @@ function StudiesPage() {
       </header>
 
       <div className="mx-auto max-w-4xl px-6 py-8">
+        {/* Welcome */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            {displayName ? `${displayName}'s Studies` : "My Studies"}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">All your study plans in one place</p>
+        </div>
+
         {/* Master Calendar */}
         {masterDays.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-lg font-bold text-foreground mb-4">{displayName}'s Study Calendar</h2>
+            <h2 className="text-base font-semibold text-foreground mb-3">Study Calendar</h2>
             <div className="glass-card p-5">
               <MasterCalendar
                 days={masterDays}
@@ -134,15 +141,10 @@ function StudiesPage() {
           </div>
         )}
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">{displayName}'s Studies</h1>
-          <p className="text-sm text-muted-foreground mt-1">All your study plans in one place</p>
-        </div>
-
         {uploads.length === 0 ? (
-          <div className="text-center py-20">
+          <div className="text-center py-24">
             <p className="text-muted-foreground mb-4">You haven't created any study plans yet.</p>
-            <Button onClick={() => navigate({ to: "/upload" })}>
+            <Button onClick={() => navigate({ to: "/upload" })} size="lg">
               <Plus className="h-4 w-4 mr-1" /> Create Your First Plan
             </Button>
           </div>
@@ -155,8 +157,8 @@ function StudiesPage() {
               return (
                 <div
                   key={upload.id}
-                  className="glass-card group flex items-center justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg animate-fade-in"
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="glass-card group flex items-center justify-between p-5 hover:-translate-y-0.5 animate-fade-in"
+                  style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <Link
                     to="/dashboard"
@@ -164,14 +166,14 @@ function StudiesPage() {
                     className="flex-1 min-w-0"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary/15">
                         {upload.subject_name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-semibold text-foreground truncate">{upload.subject_name}</h3>
                         <div className="flex items-center gap-3 mt-0.5">
                           <span className="text-xs text-muted-foreground">
-                            Created {format(parseISO(upload.created_at), "MMM d, yyyy")}
+                            {format(parseISO(upload.created_at), "MMM d, yyyy")}
                           </span>
                           <span className={`text-xs font-medium ${isPast ? "text-muted-foreground" : "text-primary"}`}>
                             {isPast ? "Exam passed" : `${daysUntilTest} day${daysUntilTest !== 1 ? "s" : ""} left`}
