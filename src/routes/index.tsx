@@ -161,7 +161,7 @@ function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border bg-card px-6 py-8">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 md:flex-row">
-          <img src={logo} alt="Note Pilot" className="h-16 w-16 object-contain" />
+          <img src={logo} alt="Note Pilot" className="h-20 w-20 object-contain" />
           <p className="text-xs text-muted-foreground">Built with AI</p>
           <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Note Pilot</p>
         </div>

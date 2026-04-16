@@ -110,7 +110,7 @@ function StudiesPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="flex items-center justify-between px-6 py-4">
-          <Link to="/"><img src={logo} alt="Note Pilot" className="h-20 w-20 object-contain" /></Link>
+          <Link to="/"><img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" /></Link>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New

@@ -181,7 +181,7 @@ function UploadPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <Link to="/studies"><img src={logo} alt="Note Pilot" className="h-20 w-20 object-contain" /></Link>
+        <Link to="/studies"><img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" /></Link>
         <UserMenu />
       </header>
 
