@@ -25,6 +25,10 @@ export const coachChat = createServerFn({ method: "POST" })
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Verify the user is authenticated before calling the edge function
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw new Error("Unauthorized");
+
     const { data: aiData, error: aiError } = await supabase.functions.invoke("coach-chat", {
       body: {
         message: data.message,
