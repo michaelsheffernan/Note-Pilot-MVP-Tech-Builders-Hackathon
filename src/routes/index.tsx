@@ -3,6 +3,7 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Layers, MessageCircle, ArrowRight, Quote, Sparkles, BookOpen } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
+import logo from "@/assets/note-pilot-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({

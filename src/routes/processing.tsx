@@ -121,7 +121,7 @@ function ProcessingPage() {
         </div>
 
         <div className="relative mb-8">
-          <BookOpen className="h-16 w-16 text-primary animate-pulse" />
+          <img src={logo} alt="Note Pilot" className="h-16 w-16 object-contain animate-pulse" />
         </div>
         <p className="text-xl font-medium text-foreground animate-pulse">
           {statusMessages[msgIndex]}
