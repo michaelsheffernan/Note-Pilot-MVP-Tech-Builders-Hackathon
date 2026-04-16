@@ -3,15 +3,15 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { CalendarStudyPlan } from "@/components/CalendarStudyPlan";
 import { FlashcardsTab } from "@/components/FlashcardsTab";
 import { CoachTab } from "@/components/CoachTab";
 import { NotesTab } from "@/components/NotesTab";
+import { StudyPlanSettings, type StudyPreferences } from "@/components/StudyPlanSettings";
 import { Progress } from "@/components/ui/progress";
 import { differenceInDays, parseISO } from "date-fns";
-import type { Json } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/dashboard")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-type Tab = "plan" | "notes" | "flashcards" | "coach";
+type Tab = "plan" | "notes" | "flashcards" | "coach" | "settings";
 
 interface StudyDay {
   day: number;
@@ -40,9 +40,22 @@ interface Flashcard {
   answer: string;
 }
 
+const defaultPrefs: StudyPreferences = {
+  studyMode: "deadline",
+  examType: "mixed",
+  difficulty: "intermediate",
+  studyHours: "1",
+  studyStyle: "mixed",
+  focusAreas: "",
+  weakTopics: "",
+  additionalNotes: "",
+  daysPerWeek: "5",
+  studyDays: "",
+};
+
 function DashboardPage() {
   const { uploadId } = Route.useSearch();
-  const { user, session, loading, signOut } = useAuth();
+  const { user, session, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("plan");
   const [upload, setUpload] = useState<{
@@ -51,30 +64,38 @@ function DashboardPage() {
     file_text: string | null;
     file_url: string;
     created_at: string;
+    preferences: StudyPreferences | null;
   } | null>(null);
   const [plan, setPlan] = useState<StudyDay[]>([]);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
+  const [preferences, setPreferences] = useState<StudyPreferences>(defaultPrefs);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
 
-  useEffect(() => {
+  const fetchAllData = async () => {
     if (!user || !uploadId) return;
-    const fetchData = async () => {
-      const [uploadRes, planRes, cardsRes] = await Promise.all([
-        supabase.from("uploads").select("subject_name, test_date, file_text, file_url, created_at").eq("id", uploadId).single(),
-        supabase.from("study_plans").select("plan_json").eq("upload_id", uploadId).single(),
-        supabase.from("flashcards").select("cards_json").eq("upload_id", uploadId).single(),
-      ]);
-      if (uploadRes.data) setUpload(uploadRes.data);
-      if (planRes.data) setPlan(planRes.data.plan_json as unknown as StudyDay[]);
-      if (cardsRes.data) setCards(cardsRes.data.cards_json as unknown as Flashcard[]);
-      setDataLoading(false);
-    };
-    fetchData();
+    const [uploadRes, planRes, cardsRes] = await Promise.all([
+      supabase.from("uploads").select("subject_name, test_date, file_text, file_url, created_at, preferences").eq("id", uploadId).single(),
+      supabase.from("study_plans").select("plan_json").eq("upload_id", uploadId).single(),
+      supabase.from("flashcards").select("cards_json").eq("upload_id", uploadId).single(),
+    ]);
+    if (uploadRes.data) {
+      setUpload(uploadRes.data as any);
+      if (uploadRes.data.preferences && typeof uploadRes.data.preferences === "object") {
+        setPreferences({ ...defaultPrefs, ...(uploadRes.data.preferences as any) });
+      }
+    }
+    if (planRes.data) setPlan(planRes.data.plan_json as unknown as StudyDay[]);
+    if (cardsRes.data) setCards(cardsRes.data.cards_json as unknown as Flashcard[]);
+    setDataLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAllData();
   }, [user, uploadId]);
 
   const toggleComplete = (day: number) => {
@@ -113,6 +134,7 @@ function DashboardPage() {
     { key: "notes", label: "Notes" },
     { key: "flashcards", label: "Flashcards" },
     { key: "coach", label: "AI Coach" },
+    { key: "settings", label: "Settings" },
   ];
 
   return (
@@ -203,8 +225,8 @@ function DashboardPage() {
               subjectName={upload?.subject_name ?? ""}
               accessToken={session?.access_token ?? ""}
               onPlanUpdated={() => {
-                supabase.from("uploads").select("subject_name, test_date, file_text, file_url, created_at").eq("id", uploadId).single().then(({ data }) => {
-                  if (data) setUpload(data);
+                supabase.from("uploads").select("subject_name, test_date, file_text, file_url, created_at, preferences").eq("id", uploadId).single().then(({ data }) => {
+                  if (data) setUpload(data as any);
                 });
               }}
             />
@@ -215,6 +237,21 @@ function DashboardPage() {
               noteContext={upload?.file_text ?? ""}
               subjectName={upload?.subject_name ?? ""}
               accessToken={session?.access_token ?? ""}
+            />
+          )}
+          {activeTab === "settings" && (
+            <StudyPlanSettings
+              uploadId={uploadId}
+              subjectName={upload?.subject_name ?? ""}
+              testDate={upload?.test_date ?? ""}
+              fileUrl={upload?.file_url ?? ""}
+              accessToken={session?.access_token ?? ""}
+              preferences={preferences}
+              onPreferencesUpdated={(prefs) => setPreferences(prefs)}
+              onPlanRegenerated={() => {
+                fetchAllData();
+                setActiveTab("plan");
+              }}
             />
           )}
         </div>

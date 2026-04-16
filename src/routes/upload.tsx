@@ -163,6 +163,9 @@ function UploadPage() {
         if (studyGoal) extraContext.studyGoal = studyGoal;
       }
 
+      // Save preferences to DB
+      await supabase.from("uploads").update({ preferences: extraContext as any }).eq("id", uploadData.id);
+
       localStorage.setItem(`upload_context_${uploadData.id}`, JSON.stringify(extraContext));
       navigate({ to: "/processing", search: { uploadId: uploadData.id } });
     } catch (err: unknown) {

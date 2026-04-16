@@ -114,6 +114,7 @@ export type Database = {
           file_text: string | null
           file_url: string
           id: string
+          preferences: Json | null
           subject_name: string
           test_date: string
           user_id: string
@@ -123,6 +124,7 @@ export type Database = {
           file_text?: string | null
           file_url: string
           id?: string
+          preferences?: Json | null
           subject_name: string
           test_date: string
           user_id: string
@@ -132,6 +134,7 @@ export type Database = {
           file_text?: string | null
           file_url?: string
           id?: string
+          preferences?: Json | null
           subject_name?: string
           test_date?: string
           user_id?: string
