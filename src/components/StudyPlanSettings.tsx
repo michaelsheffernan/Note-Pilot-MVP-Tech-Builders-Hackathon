@@ -3,12 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Settings, RefreshCw, Save, Calendar, Clock, BookOpen, Target } from "lucide-react";
+import { RefreshCw, Save, Calendar, BookOpen, Target } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { analyseNotes } from "@/server/analyse.functions";
-import { format } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 
 export interface StudyPreferences {
   studyMode: string;
@@ -26,6 +25,13 @@ export interface StudyPreferences {
   studentName?: string;
 }
 
+interface StudyPlanDay {
+  day: number;
+  date: string;
+  topics: string[];
+  estimated_minutes: number;
+}
+
 interface StudyPlanSettingsProps {
   uploadId: string;
   subjectName: string;
@@ -34,6 +40,7 @@ interface StudyPlanSettingsProps {
   accessToken: string;
   preferences: StudyPreferences;
   onPreferencesUpdated: (prefs: StudyPreferences) => void;
+  onPlanUpdated: () => void;
   onPlanRegenerated: () => void;
 }
 
@@ -67,6 +74,55 @@ const studyStyleOptions = [
 
 const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
+const weekdayMap: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
+function buildScheduledDates(studyDays: string, endDate: string, limit: number) {
+  const allowedDays = studyDays
+    .split(",")
+    .map((day) => day.trim())
+    .filter(Boolean)
+    .map((day) => weekdayMap[day])
+    .filter((day): day is number => day !== undefined);
+
+  const dates: string[] = [];
+  const lastDate = parseISO(endDate);
+  lastDate.setHours(12, 0, 0, 0);
+
+  let cursor = new Date();
+  cursor.setHours(12, 0, 0, 0);
+
+  while (cursor <= lastDate && dates.length < limit) {
+    if (!allowedDays.length || allowedDays.includes(cursor.getDay())) {
+      dates.push(format(cursor, "yyyy-MM-dd"));
+    }
+    cursor = addDays(cursor, 1);
+  }
+
+  return dates;
+}
+
+function reschedulePlanDates(plan: StudyPlanDay[], studyDays: string, endDate: string) {
+  const scheduledDates = buildScheduledDates(studyDays, endDate, plan.length);
+
+  if (!scheduledDates.length) {
+    return plan;
+  }
+
+  return plan.slice(0, scheduledDates.length).map((entry, index) => ({
+    ...entry,
+    day: index + 1,
+    date: scheduledDates[index],
+  }));
+}
+
 export function StudyPlanSettings({
   uploadId,
   subjectName,
@@ -75,6 +131,7 @@ export function StudyPlanSettings({
   accessToken,
   preferences,
   onPreferencesUpdated,
+  onPlanUpdated,
   onPlanRegenerated,
 }: StudyPlanSettingsProps) {
   const [prefs, setPrefs] = useState<StudyPreferences>({ ...preferences });
@@ -85,26 +142,61 @@ export function StudyPlanSettings({
 
   const selectedDays = prefs.studyDays ? prefs.studyDays.split(",").filter(Boolean) : [];
 
+  const buildUpdatedPrefs = (nextPrefs: StudyPreferences) => {
+    const nextSelectedDays = nextPrefs.studyDays ? nextPrefs.studyDays.split(",").filter(Boolean) : [];
+    return {
+      ...nextPrefs,
+      daysPerWeek: String(nextSelectedDays.length || 5),
+    };
+  };
+
   const toggleDay = (day: string) => {
-    const current = selectedDays;
-    const updated = current.includes(day) ? current.filter((d) => d !== day) : [...current, day];
+    const updated = selectedDays.includes(day)
+      ? selectedDays.filter((d) => d !== day)
+      : [...selectedDays, day];
+
     setPrefs({ ...prefs, studyDays: updated.join(",") });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const updatedPrefs = buildUpdatedPrefs(prefs);
+
       const { error } = await supabase
         .from("uploads")
         .update({
           subject_name: editSubject.trim(),
           test_date: editTestDate,
-          preferences: prefs as any,
+          preferences: updatedPrefs as any,
         })
         .eq("id", uploadId);
       if (error) throw error;
-      onPreferencesUpdated(prefs);
-      toast.success("Settings saved!");
+
+      const { data: existingPlan, error: planFetchError } = await supabase
+        .from("study_plans")
+        .select("id, plan_json")
+        .eq("upload_id", uploadId)
+        .maybeSingle();
+      if (planFetchError) throw planFetchError;
+
+      if (existingPlan && Array.isArray(existingPlan.plan_json)) {
+        const updatedPlan = reschedulePlanDates(
+          existingPlan.plan_json as unknown as StudyPlanDay[],
+          updatedPrefs.studyDays,
+          editTestDate,
+        );
+
+        const { error: planUpdateError } = await supabase
+          .from("study_plans")
+          .update({ plan_json: updatedPlan as any })
+          .eq("id", existingPlan.id);
+        if (planUpdateError) throw planUpdateError;
+      }
+
+      onPreferencesUpdated(updatedPrefs);
+      onPlanUpdated();
+      toast.success("Settings saved and calendar updated!");
     } catch {
       toast.error("Failed to save settings");
     } finally {
@@ -115,11 +207,8 @@ export function StudyPlanSettings({
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
-      // Derive daysPerWeek from selected study days
-      const currentSelectedDays = prefs.studyDays ? prefs.studyDays.split(",").filter(Boolean) : [];
-      const updatedPrefs = { ...prefs, daysPerWeek: String(currentSelectedDays.length || 5) };
+      const updatedPrefs = buildUpdatedPrefs(prefs);
 
-      // Save first
       await supabase
         .from("uploads")
         .update({
@@ -129,13 +218,11 @@ export function StudyPlanSettings({
         })
         .eq("id", uploadId);
 
-      // Delete old plan & flashcards
       await Promise.all([
         supabase.from("study_plans").delete().eq("upload_id", uploadId),
         supabase.from("flashcards").delete().eq("upload_id", uploadId),
       ]);
 
-      // Regenerate
       await analyseNotes({
         data: {
           uploadId,
@@ -170,7 +257,6 @@ export function StudyPlanSettings({
 
   return (
     <div className="space-y-6">
-      {/* Core Details */}
       <Card className="glass-card p-6">
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="h-5 w-5 text-primary" />
@@ -217,7 +303,6 @@ export function StudyPlanSettings({
         </div>
       </Card>
 
-      {/* Schedule */}
       <Card className="glass-card p-6">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="h-5 w-5 text-primary" />
@@ -234,7 +319,6 @@ export function StudyPlanSettings({
               ))}
             </div>
           </div>
-          {/* Days per week derived from selected study days */}
           <div>
             <Label className="mb-2 block">Study Days</Label>
             <div className="grid grid-cols-4 gap-2">
@@ -258,7 +342,6 @@ export function StudyPlanSettings({
         </div>
       </Card>
 
-      {/* Focus Areas */}
       <Card className="glass-card p-6">
         <div className="flex items-center gap-2 mb-4">
           <Target className="h-5 w-5 text-primary" />
@@ -276,7 +359,6 @@ export function StudyPlanSettings({
         </div>
       </Card>
 
-      {/* Actions */}
       <div className="flex gap-3">
         <Button onClick={handleSave} disabled={saving} variant="outline" className="flex-1 gap-2">
           <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}
@@ -287,7 +369,7 @@ export function StudyPlanSettings({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground text-center">
-        "Save Changes" updates settings only. "Regenerate Plan" will create a new study plan and flashcards using AI.
+        "Save Changes" updates your study details and reschedules calendar dates. "Regenerate Plan" rebuilds the plan and flashcards using AI.
       </p>
     </div>
   );

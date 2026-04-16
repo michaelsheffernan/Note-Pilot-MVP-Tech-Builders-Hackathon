@@ -12,29 +12,26 @@ function repairAndParseJSON(raw: string): { study_plan: any[]; flashcards: any[]
   if (jsonStart === -1) throw new Error("No JSON object found in AI response");
   cleaned = cleaned.substring(jsonStart);
 
-  // Try parsing as-is first
   try {
     const parsed = JSON.parse(cleaned);
     if (parsed.study_plan && parsed.flashcards) return parsed;
-  } catch { /* continue to repair */ }
+  } catch {
+    // continue to repair
+  }
 
-  // Remove trailing commas
   cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
 
-  // Try again
   try {
     const parsed = JSON.parse(cleaned);
     if (parsed.study_plan && parsed.flashcards) return parsed;
-  } catch { /* continue to repair */ }
+  } catch {
+    // continue to repair
+  }
 
-  // The JSON is likely truncated. Try to close open brackets/braces.
   let repaired = cleaned;
-  // Count open brackets
   const opens = (s: string, c: string) => (s.match(new RegExp(`\\${c}`, "g")) || []).length;
   const closes = (s: string, c: string) => (s.match(new RegExp(`\\${c}`, "g")) || []).length;
 
-  // Remove any trailing partial string/value (text after last complete entry)
-  // Find the last complete object or value separator
   const lastGoodComma = repaired.lastIndexOf("},");
   const lastGoodBracket = repaired.lastIndexOf("}]");
   const lastGood = Math.max(lastGoodComma, lastGoodBracket);
@@ -43,23 +40,75 @@ function repairAndParseJSON(raw: string): { study_plan: any[]; flashcards: any[]
     repaired = repaired.substring(0, lastGood + 1);
   }
 
-  // Remove trailing commas again
   repaired = repaired.replace(/,\s*$/, "");
 
-  // Close open brackets
   let openSquare = opens(repaired, "[") - closes(repaired, "]");
   let openCurly = opens(repaired, "{") - closes(repaired, "}");
-  while (openSquare > 0) { repaired += "]"; openSquare--; }
-  while (openCurly > 0) { repaired += "}"; openCurly--; }
+  while (openSquare > 0) {
+    repaired += "]";
+    openSquare--;
+  }
+  while (openCurly > 0) {
+    repaired += "}";
+    openCurly--;
+  }
 
   try {
     const parsed = JSON.parse(repaired);
     if (parsed.study_plan) return { study_plan: parsed.study_plan, flashcards: parsed.flashcards || [] };
     return { study_plan: [], flashcards: [] };
-  } catch (e) {
+  } catch {
     console.error("JSON repair failed. Raw content (first 500 chars):", raw.substring(0, 500));
     throw new Error("Failed to parse AI response as JSON after repair attempts");
   }
+}
+
+const weekdayMap: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
+function buildStudyDates(startDate: string, endDate: string, studyDays?: string, limit?: number) {
+  const allowedWeekdays = (studyDays || "")
+    .split(",")
+    .map((day) => day.trim())
+    .filter(Boolean)
+    .map((day) => weekdayMap[day])
+    .filter((day): day is number => day !== undefined);
+
+  const dates: string[] = [];
+  const cursor = new Date(`${startDate}T12:00:00Z`);
+  const lastDate = new Date(`${endDate}T12:00:00Z`);
+
+  if (Number.isNaN(cursor.getTime()) || Number.isNaN(lastDate.getTime())) {
+    return dates;
+  }
+
+  while (cursor <= lastDate && (!limit || dates.length < limit)) {
+    if (!allowedWeekdays.length || allowedWeekdays.includes(cursor.getUTCDay())) {
+      dates.push(cursor.toISOString().slice(0, 10));
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return dates;
+}
+
+function applyScheduledDates(plan: any[], scheduledDates: string[]) {
+  if (!Array.isArray(plan) || !scheduledDates.length) {
+    return Array.isArray(plan) ? plan : [];
+  }
+
+  return plan.slice(0, scheduledDates.length).map((entry, index) => ({
+    ...entry,
+    day: index + 1,
+    date: scheduledDates[index],
+  }));
 }
 
 serve(async (req) => {
@@ -72,9 +121,11 @@ serve(async (req) => {
     } catch (parseErr) {
       console.error("Failed to parse request body:", parseErr);
       return new Response(JSON.stringify({ error: "Request body too large or malformed. Try a smaller file." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
     const { subjectName, testDate, daysUntilTest, noteText, fileBase64, fileMimeType, uploadId, userId, extraContext } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -85,8 +136,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const today = new Date().toISOString().split("T")[0];
-
     const ctx = extraContext || {};
+    const scheduledDates = buildStudyDates(today, testDate, ctx.studyDays, Number(daysUntilTest) || 1);
+    const sessionCount = scheduledDates.length || Number(daysUntilTest) || 1;
+
     let studentContext = "";
     if (ctx.examType) studentContext += `\n- Exam type: ${ctx.examType}`;
     if (ctx.difficulty) studentContext += `\n- Student knowledge level: ${ctx.difficulty}`;
@@ -99,6 +152,7 @@ serve(async (req) => {
     if (ctx.studyDuration) studentContext += `\n- Study duration: ${ctx.studyDuration}`;
     if (ctx.studyGoal) studentContext += `\n- Study goal: ${ctx.studyGoal}`;
     if (ctx.studentName) studentContext += `\n- Student's name: ${ctx.studentName}`;
+    if (ctx.studyDays) studentContext += `\n- Weekly study days: ${ctx.studyDays}`;
 
     const promptText = `You are a study planning AI. A student has uploaded their study notes. The subject label they entered is "${subjectName}" but IGNORE this label if the actual notes content differs — always base your output on the ACTUAL content of the notes.
 
@@ -109,7 +163,9 @@ STUDENT PREFERENCES:${studentContext || "\n- No additional preferences provided"
 Generate:
 
 1. A study plan as a JSON array: [{"day": 1, "date": "YYYY-MM-DD", "topics": ["topic1", "topic2"], "estimated_minutes": 60}]
-   - Spread across ${daysUntilTest} days starting from today (${today})
+   - Create exactly ${sessionCount} study sessions
+   - Use ONLY these calendar dates for the plan: ${scheduledDates.join(", ") || `Every day from ${today} to ${testDate}`}
+   - Do NOT create entries for any other dates or weekdays
    - Each day should have 1-3 focused topics derived from the actual notes
    - Estimated minutes should match the student's available study time (${ctx.studyHours || "1"} hours/day)
    - If the student specified weak topics, schedule them more frequently with spaced repetition
@@ -130,15 +186,12 @@ ${fileBase64 ? "" : `STUDENT NOTES:\n${noteText}`}
 RESPOND ONLY WITH VALID JSON in this exact format, no other text:
 {"study_plan": [...], "flashcards": [...]}`;
 
-    let messageContent: any;
-    if (fileBase64 && fileMimeType) {
-      messageContent = [
-        { type: "text", text: promptText },
-        { type: "image_url", image_url: { url: `data:${fileMimeType};base64,${fileBase64}` } },
-      ];
-    } else {
-      messageContent = promptText;
-    }
+    const messageContent = fileBase64 && fileMimeType
+      ? [
+          { type: "text", text: promptText },
+          { type: "image_url", image_url: { url: `data:${fileMimeType};base64,${fileBase64}` } },
+        ]
+      : promptText;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -159,12 +212,14 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
       console.error("AI API error:", aiResponse.status, errBody);
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited. Please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (aiResponse.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       throw new Error("AI generation failed");
@@ -172,25 +227,35 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
 
     const aiResult = await aiResponse.json();
     const content = aiResult.choices?.[0]?.message?.content ?? "";
-
     if (!content) throw new Error("AI returned empty response");
 
     const parsed = repairAndParseJSON(content);
+    const scheduledPlan = applyScheduledDates(parsed.study_plan, scheduledDates);
 
-    if (!parsed.study_plan?.length) {
+    if (!scheduledPlan.length) {
       console.error("AI returned empty study plan");
       throw new Error("AI generated an empty study plan");
     }
 
     const { error: planError } = await supabase.from("study_plans").insert({
-      user_id: userId, upload_id: uploadId, plan_json: parsed.study_plan,
+      user_id: userId,
+      upload_id: uploadId,
+      plan_json: scheduledPlan,
     });
-    if (planError) { console.error("Plan insert error:", planError); throw new Error("Failed to save study plan"); }
+    if (planError) {
+      console.error("Plan insert error:", planError);
+      throw new Error("Failed to save study plan");
+    }
 
     const { error: cardsError } = await supabase.from("flashcards").insert({
-      user_id: userId, upload_id: uploadId, cards_json: parsed.flashcards || [],
+      user_id: userId,
+      upload_id: uploadId,
+      cards_json: parsed.flashcards || [],
     });
-    if (cardsError) { console.error("Cards insert error:", cardsError); throw new Error("Failed to save flashcards"); }
+    if (cardsError) {
+      console.error("Cards insert error:", cardsError);
+      throw new Error("Failed to save flashcards");
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -198,7 +263,8 @@ RESPOND ONLY WITH VALID JSON in this exact format, no other text:
   } catch (e) {
     console.error("analyse-ai error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

@@ -88,8 +88,7 @@ function UploadPage() {
   const [weakTopics, setWeakTopics] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
 
-  // Days per week & which days
-  const [daysPerWeek, setDaysPerWeek] = useState("");
+  // Which days the user wants to study
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
 
   const [uploading, setUploading] = useState(false);
@@ -118,7 +117,7 @@ function UploadPage() {
     return false;
   })();
 
-  const canProceedStep3 = studyHours && studyStyle;
+  const canProceedStep3 = !!(studyHours && studyStyle && selectedDays.length > 0);
 
   // Compute effective test date for duration mode
   const getEffectiveTestDate = () => {

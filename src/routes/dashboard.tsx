@@ -248,6 +248,9 @@ function DashboardPage() {
               accessToken={session?.access_token ?? ""}
               preferences={preferences}
               onPreferencesUpdated={(prefs) => setPreferences(prefs)}
+              onPlanUpdated={() => {
+                fetchAllData();
+              }}
               onPlanRegenerated={() => {
                 fetchAllData();
                 setActiveTab("plan");
