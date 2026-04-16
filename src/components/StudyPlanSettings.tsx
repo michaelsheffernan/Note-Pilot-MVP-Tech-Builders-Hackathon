@@ -115,13 +115,17 @@ export function StudyPlanSettings({
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
+      // Derive daysPerWeek from selected study days
+      const currentSelectedDays = prefs.studyDays ? prefs.studyDays.split(",").filter(Boolean) : [];
+      const updatedPrefs = { ...prefs, daysPerWeek: String(currentSelectedDays.length || 5) };
+
       // Save first
       await supabase
         .from("uploads")
         .update({
           subject_name: editSubject.trim(),
           test_date: editTestDate,
-          preferences: prefs as any,
+          preferences: updatedPrefs as any,
         })
         .eq("id", uploadId);
 
@@ -139,11 +143,11 @@ export function StudyPlanSettings({
           testDate: editTestDate,
           fileUrl,
           accessToken,
-          extraContext: prefs as unknown as Record<string, string>,
+          extraContext: updatedPrefs as unknown as Record<string, string>,
         },
       });
 
-      onPreferencesUpdated(prefs);
+      onPreferencesUpdated(updatedPrefs);
       onPlanRegenerated();
       toast.success("Study plan regenerated!");
     } catch (err) {
