@@ -139,7 +139,7 @@ export function StudyPlanSettings({
           testDate: editTestDate,
           fileUrl,
           accessToken,
-          extraContext: prefs as Record<string, string>,
+          extraContext: prefs as unknown as Record<string, string>,
         },
       });
 
