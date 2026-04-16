@@ -30,7 +30,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "StudySync — AI Study Assistant" },
+{ title: "Note Pilot — AI Study Assistant" },
       { name: "description", content: "Turn your notes into a personalised study plan, flashcards, and AI coach." },
     ],
     links: [

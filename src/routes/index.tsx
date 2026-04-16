@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Layers, MessageCircle, ArrowRight, Quote, Sparkles } from "lucide-react";
+import { Layers, MessageCircle, ArrowRight, Quote, Sparkles, BookOpen } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "StudySync — Turn Your Notes Into a Study Plan" },
-      { name: "description", content: "Upload your notes, set your test date. StudySync builds your study plan, flashcards, and personal AI coach automatically." },
-      { property: "og:title", content: "StudySync — Turn Your Notes Into a Study Plan" },
+      { title: "Note Pilot — Turn Your Notes Into a Study Plan" },
+      { name: "description", content: "Upload your notes, set your test date. Note Pilot builds your study plan, flashcards, and personal AI coach automatically." },
+      { property: "og:title", content: "Note Pilot — Turn Your Notes Into a Study Plan" },
       { property: "og:description", content: "AI-powered study assistant that creates personalised study plans from your notes." },
     ],
   }),
@@ -24,12 +24,12 @@ const features = [
 
 const steps = [
   { number: 1, title: "Upload Your Notes", description: "Drop in any PDF, DOCX or image. We handle the rest." },
-  { number: 2, title: "Set Your Test Date", description: "Tell us when your exam is. StudySync builds around your schedule." },
+  { number: 2, title: "Set Your Test Date", description: "Tell us when your exam is. Note Pilot builds around your schedule." },
   { number: 3, title: "Start Studying", description: "Get your personalised plan, flashcards and AI coach instantly." },
 ];
 
 const testimonials = [
-  { quote: "StudySync turned my messy biology notes into a full 2-week plan. Incredible.", name: "Aoife", label: "Leaving Cert" },
+  { quote: "Note Pilot turned my messy biology notes into a full 2-week plan. Incredible.", name: "Aoife", label: "Leaving Cert" },
   { quote: "The flashcards alone saved me hours. Actually studied smarter for once.", name: "James", label: "2nd Year Uni" },
   { quote: "My AI coach explained concepts better than my textbook did.", name: "Sara", label: "A-Level Student" },
 ];
@@ -63,7 +63,7 @@ function LandingPage() {
           <span className="text-primary">Instantly.</span>
         </h1>
         <p className="animate-fade-in mt-6 max-w-xl text-base leading-6 text-muted-foreground" style={{ animationDelay: "200ms" }}>
-          Upload your notes, set your test date. StudySync builds your study plan, flashcards, and personal AI coach automatically.
+          Upload your notes, set your test date. Note Pilot builds your study plan, flashcards, and personal AI coach automatically.
         </p>
         <div className="animate-fade-in mt-10" style={{ animationDelay: "300ms" }}>
           <Button variant="hero" asChild>
@@ -126,7 +126,7 @@ function LandingPage() {
         <AnimatedSection>
           <div className="mx-auto max-w-2xl text-center px-6">
             <h2 className="text-3xl font-bold text-foreground">Ready to study smarter?</h2>
-            <p className="mt-4 text-muted-foreground">Join hundreds of students already using StudySync to ace their exams.</p>
+            <p className="mt-4 text-muted-foreground">Join hundreds of students already using Note Pilot to ace their exams.</p>
             <Button variant="hero" className="mt-8" asChild>
               <Link to="/auth" className="gap-2">Start Studying Now <ArrowRight className="h-4 w-4" /></Link>
             </Button>
@@ -160,9 +160,9 @@ function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border bg-card px-6 py-8">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-4 md:flex-row">
-          <span className="font-semibold text-foreground">StudySync</span>
+          <span className="font-semibold text-foreground">Note Pilot</span>
           <p className="text-xs text-muted-foreground">Built with AI</p>
-          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} StudySync</p>
+          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Note Pilot</p>
         </div>
       </footer>
     </div>

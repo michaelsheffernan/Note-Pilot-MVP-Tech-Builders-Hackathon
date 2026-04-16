@@ -26,7 +26,7 @@ export const Route = createFileRoute("/processing")({
     uploadId: search.uploadId as string,
   }),
   head: () => ({
-    meta: [{ title: "Processing — StudySync" }],
+    meta: [{ title: "Processing — Note Pilot" }],
   }),
   component: ProcessingPage,
 });
@@ -118,7 +118,7 @@ function ProcessingPage() {
       <div className="flex flex-col items-center max-w-md w-full">
         <div className="mb-4 flex items-center gap-2">
           <BookOpen className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold text-foreground">StudySync</span>
+          <span className="text-lg font-bold text-foreground">Note Pilot</span>
         </div>
 
         <div className="relative mb-8">
