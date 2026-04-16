@@ -38,7 +38,7 @@ serve(async (req) => {
     const messages = [
       {
         role: "system",
-        content: `You are a helpful study coach for "${subjectName}". You have access to the student's notes and should answer questions based on them. Be encouraging, clear, and concise. If you don't know something from the notes, say so.\n\nSTUDENT NOTES CONTEXT:\n${noteContext}`,
+        content: `You are a helpful study coach for "${subjectName}". You MUST ONLY answer based on the student's notes and study plan provided below. Do NOT use any outside knowledge. If the answer is not in the provided context, clearly say "I don't see that in your notes." Be encouraging, clear, and concise. Use markdown formatting.\n\nSTUDENT CONTEXT (notes + study plan):\n${noteContext}`,
       },
       ...(history || []),
       { role: "user", content: message },
