@@ -10,7 +10,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Verify JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -20,41 +19,97 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const anonClient = createClient(supabaseUrl, anonKey, {
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { noteText, subjectName } = await req.json();
+    const { noteText, subjectName, fileUrl, uploadId } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    if (!noteText || noteText.length < 10) {
+    // Try to get actual note content - first from noteText, then by downloading the file
+    let actualNoteText = noteText || "";
+    let fileBase64 = "";
+    let fileMimeType = "";
+
+    // If noteText is a placeholder or too short, try downloading the file
+    const isPlaceholder = !actualNoteText || 
+      actualNoteText.length < 20 || 
+      actualNoteText.includes("[File attached as base64");
+
+    if (isPlaceholder && fileUrl) {
+      console.log("noteText is placeholder, downloading file from storage:", fileUrl);
+      const { data: fileData, error: dlError } = await supabase.storage
+        .from("notes")
+        .download(fileUrl);
+      
+      if (!dlError && fileData) {
+        const fileName = fileUrl.toLowerCase();
+        if (fileName.endsWith(".pdf") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || 
+            fileName.endsWith(".png") || fileName.endsWith(".webp")) {
+          // Send as base64 for vision model
+          const arrayBuf = await fileData.arrayBuffer();
+          const bytes = new Uint8Array(arrayBuf);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          fileBase64 = btoa(binary);
+          if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
+          else if (fileName.endsWith(".png")) fileMimeType = "image/png";
+          else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
+          else fileMimeType = "image/jpeg";
+        } else {
+          actualNoteText = await fileData.text();
+        }
+      }
+    }
+
+    // If we still have no content and no file to send
+    if ((!actualNoteText || actualNoteText.length < 10) && !fileBase64) {
       return new Response(
         JSON.stringify({ summary: `No detailed notes available for ${subjectName}. Upload notes to get a comprehensive AI summary.` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const prompt = `You are an expert academic tutor. A student is studying "${subjectName}". Based on their uploaded notes below, provide:
+    const systemPrompt = `You are an expert academic tutor. You MUST ONLY summarise from the student's actual uploaded notes provided below. Do NOT invent, assume, or hallucinate any content that is not explicitly present in the notes. If the notes are sparse, say so honestly.`;
 
-1. **Overview** — A concise summary of what the notes cover (2-3 paragraphs)
-2. **Key Concepts** — List the most important concepts, definitions, and theories mentioned
-3. **Important Details** — Any formulas, dates, names, or specific facts worth memorising
+    const userPrompt = `A student is studying "${subjectName}". Based ONLY on their uploaded notes below, provide:
+
+1. **Overview** — A concise summary of what the notes actually cover (2-3 paragraphs)
+2. **Key Concepts** — List the most important concepts, definitions, and theories actually mentioned in the notes
+3. **Important Details** — Any formulas, dates, names, or specific facts from the notes worth memorising
 4. **Connections** — How different topics in the notes relate to each other
-5. **Study Tips** — Specific advice for mastering this material based on what you see in the notes
+5. **Study Tips** — Specific advice for mastering this material based on what you see
 6. **Knowledge Gaps** — Topics that seem incomplete or could benefit from additional study material
 
+IMPORTANT: Only reference information that actually appears in the student's notes. Do not add external knowledge.
+
 STUDENT NOTES:
-${noteText}
+${actualNoteText.slice(0, 15000)}
 
 Format your response in clean markdown with headers and bullet points.`;
+
+    // Build messages - use vision if we have a file
+    let messages: any[];
+    if (fileBase64 && fileMimeType) {
+      messages = [{
+        role: "user",
+        content: [
+          { type: "text", text: userPrompt },
+          { type: "image_url", image_url: { url: `data:${fileMimeType};base64,${fileBase64.slice(0, 4 * 1024 * 1024)}` } },
+        ],
+      }];
+    } else {
+      messages = [{ role: "user", content: userPrompt }];
+    }
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -64,9 +119,9 @@ Format your response in clean markdown with headers and bullet points.`;
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "system", content: systemPrompt }, ...messages],
         max_tokens: 4000,
-        temperature: 0.4,
+        temperature: 0.2,
       }),
     });
 
