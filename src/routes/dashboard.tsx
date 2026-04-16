@@ -160,6 +160,7 @@ function DashboardPage() {
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New
             </Button>
+            <ThemeToggle />
             <UserMenu />
           </div>
         </div>
