@@ -118,7 +118,6 @@ function StudiesPage() {
             <ThemeToggle />
             <UserMenu />
           </div>
-          </div>
         </div>
       </header>
 
