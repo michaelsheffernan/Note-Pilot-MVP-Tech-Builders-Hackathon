@@ -79,9 +79,9 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert academic tutor. You MUST ONLY summarise from the student's actual uploaded notes provided below. Do NOT invent, assume, or hallucinate any content that is not explicitly present in the notes. If the notes are sparse, say so honestly.`;
+    const systemPrompt = `You are an expert academic tutor. You MUST ONLY summarise from the student's actual uploaded notes. Do NOT invent, assume, or hallucinate any content that is not explicitly present in the notes. If the notes are sparse, say so honestly.`;
 
-    const userPrompt = `A student is studying "${subjectName}". Based ONLY on their uploaded notes below, provide:
+    const summaryInstructions = `A student is studying "${subjectName}". Based ONLY on their notes, provide:
 
 1. **Overview** — A concise summary of what the notes actually cover (2-3 paragraphs)
 2. **Key Concepts** — List the most important concepts, definitions, and theories actually mentioned in the notes
@@ -91,24 +91,22 @@ serve(async (req) => {
 6. **Knowledge Gaps** — Topics that seem incomplete or could benefit from additional study material
 
 IMPORTANT: Only reference information that actually appears in the student's notes. Do not add external knowledge.
-
-STUDENT NOTES:
-${actualNoteText.slice(0, 15000)}
-
 Format your response in clean markdown with headers and bullet points.`;
 
     // Build messages - use vision if we have a file
     let messages: any[];
     if (fileBase64 && fileMimeType) {
+      // For images/PDFs: tell AI to READ the attached file
       messages = [{
         role: "user",
         content: [
-          { type: "text", text: userPrompt },
+          { type: "text", text: `${summaryInstructions}\n\nThe student's notes are in the attached file. Read the file content carefully and summarise it.` },
           { type: "image_url", image_url: { url: `data:${fileMimeType};base64,${fileBase64.slice(0, 4 * 1024 * 1024)}` } },
         ],
       }];
     } else {
-      messages = [{ role: "user", content: userPrompt }];
+      // For text notes: include inline
+      messages = [{ role: "user", content: `${summaryInstructions}\n\nSTUDENT NOTES:\n${actualNoteText.slice(0, 15000)}` }];
     }
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
