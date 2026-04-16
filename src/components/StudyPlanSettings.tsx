@@ -230,16 +230,7 @@ export function StudyPlanSettings({
               ))}
             </div>
           </div>
-          <div>
-            <Label className="mb-2 block">Days Per Week</Label>
-            <div className="grid grid-cols-5 gap-2">
-              {["3", "4", "5", "6", "7"].map((d) => (
-                <OptionButton key={d} selected={prefs.daysPerWeek === d} onClick={() => setPrefs({ ...prefs, daysPerWeek: d })}>
-                  {d} days
-                </OptionButton>
-              ))}
-            </div>
-          </div>
+          {/* Days per week derived from selected study days */}
           <div>
             <Label className="mb-2 block">Study Days</Label>
             <div className="grid grid-cols-4 gap-2">
