@@ -117,11 +117,11 @@ function ProcessingPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="flex flex-col items-center max-w-md w-full">
         <div className="mb-4">
-          <img src={logo} alt="Note Pilot" className="h-12 w-12 object-contain" />
+          <img src={logo} alt="Note Pilot" className="h-20 w-20 object-contain" />
         </div>
 
         <div className="relative mb-8">
-          <img src={logo} alt="Note Pilot" className="h-16 w-16 object-contain animate-pulse" />
+          <img src={logo} alt="Note Pilot" className="h-24 w-24 object-contain animate-pulse" />
         </div>
         <p className="text-xl font-medium text-foreground animate-pulse">
           {statusMessages[msgIndex]}
