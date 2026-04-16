@@ -42,7 +42,7 @@ export function NotesTab({ uploadId, fileText, fileUrl, subjectName, accessToken
     setSummaryLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("notes-summary", {
-        body: { noteText: fileText?.slice(0, 15000), subjectName },
+        body: { noteText: fileText?.slice(0, 15000), subjectName, fileUrl, uploadId },
       });
       if (error) throw error;
       setAiSummary(data?.summary ?? "No summary could be generated.");
@@ -97,11 +97,11 @@ export function NotesTab({ uploadId, fileText, fileUrl, subjectName, accessToken
           )}
         </div>
         {aiSummary ? (
-          <ScrollArea className="max-h-[400px]">
-            <div className="prose prose-invert prose-sm max-w-none text-foreground/90">
+          <div className="h-[400px] overflow-y-auto rounded-md border border-border/50 p-4">
+            <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90">
               <ReactMarkdown>{aiSummary}</ReactMarkdown>
             </div>
-          </ScrollArea>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">
             {fileText
@@ -158,12 +158,12 @@ export function NotesTab({ uploadId, fileText, fileUrl, subjectName, accessToken
             </div>
           )
         ) : fileText ? (
-          <ScrollArea className="max-h-[300px]">
+          <div className="h-[300px] overflow-y-auto rounded-md border border-border/50 p-4">
             <pre className="text-sm text-foreground/80 whitespace-pre-wrap font-sans leading-relaxed">
               {fileText.slice(0, 10000)}
               {fileText.length > 10000 && "\n\n... (truncated)"}
             </pre>
-          </ScrollArea>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No notes content extracted from your upload.</p>
         )}
