@@ -84,7 +84,6 @@ function ProcessingPage() {
 
         if (!upload) throw new Error("Upload not found");
 
-        // Retrieve extra context from localStorage
         let extraContext: Record<string, string> = {};
         try {
           const stored = localStorage.getItem(`upload_context_${uploadId}`);
@@ -114,24 +113,27 @@ function ProcessingPage() {
   }, [uploadId, session, navigate]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <div className="flex flex-col items-center max-w-md w-full">
-        <div className="mb-4">
-          <img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" />
+    <div className="grid-bg relative flex min-h-screen flex-col items-center justify-center px-4">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[500px] rounded-full bg-primary/[0.06] blur-3xl" />
+      
+      <div className="relative z-10 flex flex-col items-center max-w-md w-full">
+        <div className="relative mb-10">
+          <img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain animate-pulse" />
+          {/* Glow ring behind logo */}
+          <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl scale-150" />
         </div>
 
-        <div className="relative mb-8">
-          <img src={logo} alt="Note Pilot" className="h-32 w-32 object-contain animate-pulse" />
-        </div>
-        <p className="text-xl font-medium text-foreground animate-pulse">
+        <p className="text-xl font-semibold text-foreground transition-all duration-500">
           {statusMessages[msgIndex]}
         </p>
 
-        <div className="mt-6 w-full max-w-xs">
+        <div className="mt-8 w-full max-w-xs">
           <Progress value={progress} className="h-2" />
+          <p className="mt-2 text-right text-xs text-muted-foreground">{Math.round(progress)}%</p>
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-6 flex gap-2">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
@@ -140,10 +142,12 @@ function ProcessingPage() {
             />
           ))}
         </div>
+
         <p className="mt-6 text-sm text-muted-foreground">
           This usually takes 20–40 seconds
         </p>
-        <p className="mt-6 rounded-xl bg-secondary/50 px-5 py-3 text-center text-xs text-muted-foreground italic transition-all duration-500">
+
+        <p className="mt-6 glass-card px-6 py-4 text-center text-xs text-muted-foreground italic leading-relaxed transition-all duration-500">
           {funFacts[factIndex]}
         </p>
       </div>

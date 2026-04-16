@@ -52,8 +52,11 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="glass-card w-full max-w-md p-8">
+    <div className="grid-bg relative flex min-h-screen items-center justify-center px-4">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[500px] rounded-full bg-primary/[0.05] blur-3xl" />
+      
+      <div className="glass-card relative z-10 w-full max-w-md p-8 sm:p-10">
         <div className="mb-2 flex flex-col items-center gap-2">
           <img src={logo} alt="Note Pilot" className="h-32 w-32 object-contain" />
           <p className="text-sm text-muted-foreground">Your AI study partner</p>
@@ -61,45 +64,45 @@ function AuthPage() {
 
         <div className="mb-6 mt-6 flex rounded-xl bg-secondary p-1">
           <button onClick={() => setIsSignUp(false)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${!isSignUp ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 ${!isSignUp ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
             Log In
           </button>
           <button onClick={() => setIsSignUp(true)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${isSignUp ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 ${isSignUp ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
             Sign Up
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="email">Email</Label>
-            <div className="relative mt-1">
+            <Label htmlFor="email" className="text-sm">Email</Label>
+            <div className="relative mt-1.5">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="pl-10" placeholder="you@example.com" />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="pl-10 h-11" placeholder="you@example.com" />
             </div>
           </div>
           <div>
-            <Label htmlFor="password">Password</Label>
-            <div className="relative mt-1">
+            <Label htmlFor="password" className="text-sm">Password</Label>
+            <div className="relative mt-1.5">
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="pl-10" placeholder="••••••••" minLength={6} />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="pl-10 h-11" placeholder="••••••••" minLength={6} />
             </div>
           </div>
           {isSignUp && (
-            <div>
-              <Label htmlFor="confirm">Confirm Password</Label>
-              <div className="relative mt-1">
+            <div className="animate-fade-in">
+              <Label htmlFor="confirm" className="text-sm">Confirm Password</Label>
+              <div className="relative mt-1.5">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input id="confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="pl-10" placeholder="••••••••" minLength={6} />
+                <Input id="confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="pl-10 h-11" placeholder="••••••••" minLength={6} />
               </div>
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full h-11 text-sm font-semibold mt-2" disabled={submitting}>
             {submitting ? "Please wait..." : isSignUp ? "Create Account" : "Log In"}
           </Button>
         </form>
 
-        <div className="my-5 flex items-center gap-3">
+        <div className="my-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
           <span className="text-xs text-muted-foreground">or continue with</span>
           <div className="h-px flex-1 bg-border" />
