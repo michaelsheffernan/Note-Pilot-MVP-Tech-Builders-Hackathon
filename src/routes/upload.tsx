@@ -153,7 +153,7 @@ function UploadPage() {
         weakTopics,
         additionalNotes,
         studyMode,
-        daysPerWeek,
+        daysPerWeek: String(selectedDays.length || 5),
         studyDays: selectedDays.join(","),
         studentName: userName,
       };
@@ -364,16 +364,7 @@ function UploadPage() {
                 </div>
               </div>
 
-              <div>
-                <Label className="mb-2 block">How many days per week?</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {["3", "4", "5", "6", "7"].map((d) => (
-                    <button key={d} onClick={() => setDaysPerWeek(d)}
-                      className={`rounded-xl border p-3 text-sm transition-all duration-200 hover:border-primary/50 ${daysPerWeek === d ? "border-primary bg-primary/5 text-foreground font-medium" : "border-border text-muted-foreground"}`}
-                    >{d} days</button>
-                  ))}
-                </div>
-              </div>
+              {/* Days per week removed — derived from selected days */}
 
               <div>
                 <Label className="mb-2 block">Which days do you want to study?</Label>

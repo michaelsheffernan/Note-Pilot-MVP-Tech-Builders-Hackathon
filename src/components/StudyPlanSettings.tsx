@@ -115,13 +115,17 @@ export function StudyPlanSettings({
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
+      // Derive daysPerWeek from selected study days
+      const currentSelectedDays = prefs.studyDays ? prefs.studyDays.split(",").filter(Boolean) : [];
+      const updatedPrefs = { ...prefs, daysPerWeek: String(currentSelectedDays.length || 5) };
+
       // Save first
       await supabase
         .from("uploads")
         .update({
           subject_name: editSubject.trim(),
           test_date: editTestDate,
-          preferences: prefs as any,
+          preferences: updatedPrefs as any,
         })
         .eq("id", uploadId);
 
@@ -139,11 +143,11 @@ export function StudyPlanSettings({
           testDate: editTestDate,
           fileUrl,
           accessToken,
-          extraContext: prefs as unknown as Record<string, string>,
+          extraContext: updatedPrefs as unknown as Record<string, string>,
         },
       });
 
-      onPreferencesUpdated(prefs);
+      onPreferencesUpdated(updatedPrefs);
       onPlanRegenerated();
       toast.success("Study plan regenerated!");
     } catch (err) {
@@ -230,16 +234,7 @@ export function StudyPlanSettings({
               ))}
             </div>
           </div>
-          <div>
-            <Label className="mb-2 block">Days Per Week</Label>
-            <div className="grid grid-cols-5 gap-2">
-              {["3", "4", "5", "6", "7"].map((d) => (
-                <OptionButton key={d} selected={prefs.daysPerWeek === d} onClick={() => setPrefs({ ...prefs, daysPerWeek: d })}>
-                  {d} days
-                </OptionButton>
-              ))}
-            </div>
-          </div>
+          {/* Days per week derived from selected study days */}
           <div>
             <Label className="mb-2 block">Study Days</Label>
             <div className="grid grid-cols-4 gap-2">
