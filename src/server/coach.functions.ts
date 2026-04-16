@@ -31,9 +31,9 @@ export const coachChat = createServerFn({ method: "POST" })
 
     const { data: aiData, error: aiError } = await supabase.functions.invoke("coach-chat", {
       body: {
-        message: data.message,
+        message: data.message.slice(0, 2000),
         noteContext: data.noteContext.slice(0, 10000),
-        subjectName: data.subjectName,
+        subjectName: data.subjectName.slice(0, 200),
         history: data.history.slice(-10),
       },
     });
