@@ -26,7 +26,7 @@ export const Route = createFileRoute("/processing")({
     uploadId: search.uploadId as string,
   }),
   head: () => ({
-    meta: [{ title: "Processing — StudySync" }],
+    meta: [{ title: "Processing — Note Pilot" }],
   }),
   component: ProcessingPage,
 });
