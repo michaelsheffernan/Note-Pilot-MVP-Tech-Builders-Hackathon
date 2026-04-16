@@ -14,7 +14,7 @@ import { format, addDays } from "date-fns";
 export const Route = createFileRoute("/upload")({
   head: () => ({
     meta: [
-      { title: "Upload Notes — StudySync" },
+      { title: "Upload Notes — Note Pilot" },
       { name: "description", content: "Upload your study notes to generate a personalised study plan." },
     ],
   }),
