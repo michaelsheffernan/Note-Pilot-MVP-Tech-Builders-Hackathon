@@ -155,7 +155,7 @@ export function CoachTab({
               }`}
             >
               {msg.role === "assistant" ? (
-                <div className="prose prose-sm prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1">
+                <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1">
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
               ) : (
