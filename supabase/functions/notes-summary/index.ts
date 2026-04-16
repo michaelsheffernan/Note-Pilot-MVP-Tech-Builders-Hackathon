@@ -1,17 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { z } from "https://esm.sh/zod@3.24.1";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const requestSchema = z.object({
-  noteText: z.string().max(200_000).optional().default(""),
-  subjectName: z.string().trim().min(1).max(200),
-  fileUrl: z.string().trim().min(1).max(500).optional(),
-});
+function validateRequestBody(input: unknown) {
+  if (!input || typeof input !== "object") return null;
+  const record = input as Record<string, unknown>;
+  const noteText = typeof record.noteText === "string" ? record.noteText.slice(0, 200_000) : "";
+  const subjectName = typeof record.subjectName === "string" ? record.subjectName.trim().slice(0, 200) : "";
+  const fileUrl = typeof record.fileUrl === "string" ? record.fileUrl.trim().slice(0, 500) : undefined;
+  if (!subjectName) return null;
+  return { noteText, subjectName, fileUrl };
+}
 
 function decodeUtf8Base64(value: string) {
   try {
@@ -135,15 +137,15 @@ serve(async (req) => {
       });
     }
 
-    const parsedBody = requestSchema.safeParse(await req.json());
-    if (!parsedBody.success) {
+    const parsedBody = validateRequestBody(await req.json());
+    if (!parsedBody) {
       return new Response(JSON.stringify({ error: "Invalid request payload" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { noteText, subjectName, fileUrl } = parsedBody.data;
+    const { noteText, subjectName, fileUrl } = parsedBody;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableApiKey) throw new Error("LOVABLE_API_KEY not configured");
 
