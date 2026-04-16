@@ -79,16 +79,30 @@ export const analyseNotes = createServerFn({ method: "POST" })
     const maxBase64Size = 4 * 1024 * 1024; // 4MB
     const sendBase64 = fileBase64 && fileBase64.length <= maxBase64Size;
 
+    // Sanitize free-text context fields with length limits
+    const rawCtx = data.extraContext || {};
+    const sanitizedContext: Record<string, string> = {};
+    const ctxLimits: Record<string, number> = {
+      examType: 100, difficulty: 100, studyHours: 20, studyStyle: 100,
+      focusAreas: 500, weakTopics: 500, additionalNotes: 1000,
+      studyMode: 50, studyDuration: 50, studyGoal: 500, studentName: 100, studyDays: 100,
+    };
+    for (const [key, val] of Object.entries(rawCtx)) {
+      if (typeof val === "string" && key in ctxLimits) {
+        sanitizedContext[key] = val.slice(0, ctxLimits[key]);
+      }
+    }
+
     const { data: aiData, error: aiError } = await supabase.functions.invoke("analyse-ai", {
       body: {
-        subjectName: data.subjectName,
+        subjectName: data.subjectName.slice(0, 200),
         testDate: data.testDate,
         daysUntilTest,
         noteText: noteText.slice(0, 15000),
         fileBase64: sendBase64 ? fileBase64 : undefined,
         fileMimeType: sendBase64 ? fileMimeType : undefined,
         uploadId: data.uploadId,
-        extraContext: data.extraContext || {},
+        extraContext: sanitizedContext,
       },
     });
 
