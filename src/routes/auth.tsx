@@ -11,8 +11,8 @@ import { useAuth } from "@/hooks/use-auth";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign In — StudySync" },
-      { name: "description", content: "Sign in or create your StudySync account." },
+      { title: "Sign In — Note Pilot" },
+      { name: "description", content: "Sign in or create your Note Pilot account." },
     ],
   }),
   component: AuthPage,
@@ -54,7 +54,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="glass-card w-full max-w-md p-8">
         <div className="mb-2 flex flex-col items-center gap-1">
-          <span className="text-2xl font-bold text-foreground">StudySync</span>
+          <span className="text-2xl font-bold text-foreground">Note Pilot</span>
           <p className="text-sm text-muted-foreground">Your AI study partner</p>
         </div>
 

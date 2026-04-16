@@ -13,7 +13,7 @@ import { MasterCalendar, type MasterStudyDay } from "@/components/MasterCalendar
 export const Route = createFileRoute("/studies")({
   head: () => ({
     meta: [
-      { title: "My Studies — StudySync" },
+      { title: "My Studies — Note Pilot" },
       { name: "description", content: "View all your study plans." },
     ],
   }),
@@ -109,7 +109,7 @@ function StudiesPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-xl font-bold text-foreground">StudySync</span>
+          <span className="text-xl font-bold text-foreground">Note Pilot</span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
               <Plus className="h-4 w-4 mr-1" /> New

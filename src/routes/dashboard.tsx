@@ -19,7 +19,7 @@ export const Route = createFileRoute("/dashboard")({
   }),
   head: () => ({
     meta: [
-      { title: "Dashboard — StudySync" },
+      { title: "Dashboard — Note Pilot" },
       { name: "description", content: "Your personalised study dashboard." },
     ],
   }),
@@ -145,7 +145,7 @@ function DashboardPage() {
             <Link to="/studies" className="text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <span className="text-xl font-bold text-foreground">StudySync</span>
+            <span className="text-xl font-bold text-foreground">Note Pilot</span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/upload" })}>
