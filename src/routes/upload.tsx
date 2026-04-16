@@ -180,16 +180,18 @@ function UploadPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <Link to="/studies"><img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" /></Link>
-        <UserMenu />
+      <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center justify-between px-6 py-3">
+          <Link to="/studies"><img src={logo} alt="Note Pilot" className="h-28 w-28 object-contain" /></Link>
+          <UserMenu />
+        </div>
       </header>
 
-      <div className="mx-auto max-w-lg px-6 py-12">
+      <div className="mx-auto max-w-lg px-6 py-10">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-muted-foreground">Step {step} of {totalSteps}</span>
-            <span className="text-xs font-medium text-primary">{Math.round(stepProgress)}%</span>
+            <span className="text-xs font-semibold text-primary tabular-nums">{Math.round(stepProgress)}%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
             <div className="h-full rounded-full bg-primary transition-all duration-500 ease-out" style={{ width: `${stepProgress}%` }} />
