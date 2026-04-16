@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BookOpen, Mail, Lock } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
+import logo from "@/assets/note-pilot-logo.png";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -53,8 +54,8 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="glass-card w-full max-w-md p-8">
-        <div className="mb-2 flex flex-col items-center gap-1">
-          <span className="text-2xl font-bold text-foreground">Note Pilot</span>
+        <div className="mb-2 flex flex-col items-center gap-2">
+          <img src={logo} alt="Note Pilot" className="h-14 w-14 object-contain" />
           <p className="text-sm text-muted-foreground">Your AI study partner</p>
         </div>
 
