@@ -66,7 +66,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { subjectName, testDate, daysUntilTest, noteText, fileBase64, fileMimeType, uploadId, userId, extraContext } = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      console.error("Failed to parse request body:", parseErr);
+      return new Response(JSON.stringify({ error: "Request body too large or malformed. Try a smaller file." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { subjectName, testDate, daysUntilTest, noteText, fileBase64, fileMimeType, uploadId, userId, extraContext } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");

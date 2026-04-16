@@ -75,14 +75,18 @@ export const analyseNotes = createServerFn({ method: "POST" })
     const testDate = new Date(data.testDate);
     const daysUntilTest = Math.max(1, Math.ceil((testDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
 
+    // Limit base64 size to avoid edge function body parse failures
+    const maxBase64Size = 4 * 1024 * 1024; // 4MB
+    const sendBase64 = fileBase64 && fileBase64.length <= maxBase64Size;
+
     const { data: aiData, error: aiError } = await supabase.functions.invoke("analyse-ai", {
       body: {
         subjectName: data.subjectName,
         testDate: data.testDate,
         daysUntilTest,
         noteText: noteText.slice(0, 15000),
-        fileBase64: fileBase64 || undefined,
-        fileMimeType: fileMimeType || undefined,
+        fileBase64: sendBase64 ? fileBase64 : undefined,
+        fileMimeType: sendBase64 ? fileMimeType : undefined,
         uploadId: data.uploadId,
         userId,
         extraContext: data.extraContext || {},
@@ -91,10 +95,11 @@ export const analyseNotes = createServerFn({ method: "POST" })
 
     if (aiError) {
       console.error("Edge function error:", aiError);
-      // Check if the response body contains a specific error message
       const errorMsg = typeof aiData === "object" && aiData?.error
         ? aiData.error
-        : "AI generation failed. Please try again.";
+        : typeof aiError === "object" && "message" in aiError
+          ? (aiError as any).message
+          : "AI generation failed. Please try again.";
       throw new Error(errorMsg);
     }
 
