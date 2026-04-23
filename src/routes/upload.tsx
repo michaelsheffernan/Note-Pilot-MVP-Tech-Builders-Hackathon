@@ -100,9 +100,9 @@ function UploadPage() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
 
-  const addFiles = useCallback((newFiles: FileList | File[]) => {
+  const addFiles = useCallback((newFiles: File[]) => {
     setFiles((prev) => {
-      const combined = [...prev, ...Array.from(newFiles)];
+      const combined = [...prev, ...newFiles];
       if (combined.length > MAX_FILES) {
         toast.error(`Maximum ${MAX_FILES} files allowed`);
         return combined.slice(0, MAX_FILES);
@@ -118,7 +118,7 @@ function UploadPage() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    addFiles(e.dataTransfer.files);
+    addFiles(Array.from(e.dataTransfer.files));
   }, [addFiles]);
 
   const canProceedStep1 = files.length > 0;
@@ -244,7 +244,7 @@ function UploadPage() {
                   <span key={t} className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">{t}</span>
                 ))}
               </div>
-              <input ref={fileInputRef} type="file" className="hidden" multiple accept=".pdf,.docx,.doc,.jpg,.jpeg,.png" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
+              <input ref={fileInputRef} type="file" className="hidden" multiple accept=".pdf,.docx,.doc,.jpg,.jpeg,.png" onChange={(e) => { if (e.target.files) { const arr = Array.from(e.target.files); e.target.value = ""; addFiles(arr); } }} />
             </div>
 
             {files.length > 0 && (
