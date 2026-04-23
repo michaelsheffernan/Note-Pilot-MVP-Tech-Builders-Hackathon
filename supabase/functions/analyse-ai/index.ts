@@ -152,7 +152,7 @@ serve(async (req) => {
       });
     }
 
-    const { subjectName, testDate, daysUntilTest, noteText, fileBase64, fileMimeType, uploadId, extraContext } = body;
+    const { subjectName, testDate, daysUntilTest, noteText, fileBase64, fileMimeType, fileImages, uploadId, extraContext } = body;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -208,15 +208,23 @@ Generate:
 
 CRITICAL: Read the attached file/notes carefully. Base ALL topics and flashcards ONLY on the actual content provided — never generate generic subject material.
 
-${fileBase64 ? "" : `STUDENT NOTES:\n${noteText}`}
+${(fileBase64 || (fileImages && fileImages.length > 0)) ? "" : `STUDENT NOTES:\n${noteText}`}
 
 RESPOND ONLY WITH VALID JSON in this exact format, no other text:
 {"study_plan": [...], "flashcards": [...]}`;
 
-    const messageContent = fileBase64 && fileMimeType
+    // Build message content: support both legacy single file and new multi-file array
+    const allImages: { base64: string; mimeType: string }[] = fileImages && Array.isArray(fileImages)
+      ? fileImages
+      : (fileBase64 && fileMimeType ? [{ base64: fileBase64, mimeType: fileMimeType }] : []);
+
+    const messageContent = allImages.length > 0
       ? [
           { type: "text", text: promptText },
-          { type: "image_url", image_url: { url: `data:${fileMimeType};base64,${fileBase64}` } },
+          ...allImages.map((img: { base64: string; mimeType: string }) => ({
+            type: "image_url",
+            image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+          })),
         ]
       : promptText;
 
