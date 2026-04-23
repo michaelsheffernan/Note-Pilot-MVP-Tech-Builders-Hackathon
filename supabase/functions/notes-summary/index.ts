@@ -10,7 +10,7 @@ function validateRequestBody(input: unknown) {
   const record = input as Record<string, unknown>;
   const noteText = typeof record.noteText === "string" ? record.noteText.slice(0, 200_000) : "";
   const subjectName = typeof record.subjectName === "string" ? record.subjectName.trim().slice(0, 200) : "";
-  const fileUrl = typeof record.fileUrl === "string" ? record.fileUrl.trim().slice(0, 500) : undefined;
+  const fileUrl = typeof record.fileUrl === "string" ? record.fileUrl.trim().slice(0, 5000) : undefined;
   if (!subjectName) return null;
   return { noteText, subjectName, fileUrl };
 }
@@ -158,13 +158,18 @@ serve(async (req) => {
       actualNoteText.length < 20 ||
       actualNoteText.includes("[File attached as base64");
 
-    if (isPlaceholder && fileUrl) {
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from("notes")
-        .download(fileUrl);
+    // Support multiple files separated by "|||"
+    const fileUrlList = fileUrl ? fileUrl.split("|||").filter(Boolean) : [];
 
-      if (!downloadError && fileData) {
-        const fileName = fileUrl.toLowerCase();
+    if (isPlaceholder && fileUrlList.length > 0) {
+      for (const singleUrl of fileUrlList) {
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from("notes")
+          .download(singleUrl);
+
+        if (downloadError || !fileData) continue;
+
+        const fileName = singleUrl.toLowerCase();
         if (
           fileName.endsWith(".pdf") ||
           fileName.endsWith(".jpg") ||
@@ -172,17 +177,21 @@ serve(async (req) => {
           fileName.endsWith(".png") ||
           fileName.endsWith(".webp")
         ) {
-          const arrayBuffer = await fileData.arrayBuffer();
-          const bytes = new Uint8Array(arrayBuffer);
-          let binary = "";
-          for (let index = 0; index < bytes.length; index++) binary += String.fromCharCode(bytes[index]);
-          fileBase64 = btoa(binary);
-          if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
-          else if (fileName.endsWith(".png")) fileMimeType = "image/png";
-          else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
-          else fileMimeType = "image/jpeg";
+          // Only use first image/pdf for vision base64
+          if (!fileBase64) {
+            const arrayBuffer = await fileData.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = "";
+            for (let index = 0; index < bytes.length; index++) binary += String.fromCharCode(bytes[index]);
+            fileBase64 = btoa(binary);
+            if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
+            else if (fileName.endsWith(".png")) fileMimeType = "image/png";
+            else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
+            else fileMimeType = "image/jpeg";
+          }
         } else {
-          actualNoteText = await fileData.text();
+          const text = await fileData.text();
+          actualNoteText += `\n\n--- File: ${singleUrl.split("/").pop()} ---\n${text}`;
         }
       }
     }
