@@ -150,8 +150,7 @@ serve(async (req) => {
     if (!lovableApiKey) throw new Error("LOVABLE_API_KEY not configured");
 
     let actualNoteText = noteText.replace(/\u0000/g, "").trim();
-    let fileBase64 = "";
-    let fileMimeType = "";
+    const fileImages: { base64: string; mimeType: string }[] = [];
 
     const isPlaceholder =
       !actualNoteText ||
@@ -177,17 +176,18 @@ serve(async (req) => {
           fileName.endsWith(".png") ||
           fileName.endsWith(".webp")
         ) {
-          // Only use first image/pdf for vision base64
-          if (!fileBase64) {
-            const arrayBuffer = await fileData.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = "";
-            for (let index = 0; index < bytes.length; index++) binary += String.fromCharCode(bytes[index]);
-            fileBase64 = btoa(binary);
-            if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
-            else if (fileName.endsWith(".png")) fileMimeType = "image/png";
-            else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
-            else fileMimeType = "image/jpeg";
+          const arrayBuffer = await fileData.arrayBuffer();
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = "";
+          for (let index = 0; index < bytes.length; index++) binary += String.fromCharCode(bytes[index]);
+          const b64 = btoa(binary);
+          // Cap each image at ~2MB base64 to stay within limits
+          if (b64.length <= 2 * 1024 * 1024) {
+            let mime = "image/jpeg";
+            if (fileName.endsWith(".pdf")) mime = "application/pdf";
+            else if (fileName.endsWith(".png")) mime = "image/png";
+            else if (fileName.endsWith(".webp")) mime = "image/webp";
+            fileImages.push({ base64: b64, mimeType: mime });
           }
         } else {
           const text = await fileData.text();
@@ -196,11 +196,11 @@ serve(async (req) => {
       }
     }
 
-    if (!fileBase64) {
+    if (fileImages.length === 0) {
       actualNoteText = maybeDecodeBase64Text(actualNoteText).replace(/\u0000/g, "").trim();
     }
 
-    if ((!actualNoteText || actualNoteText.length < 10) && !fileBase64) {
+    if ((!actualNoteText || actualNoteText.length < 10) && fileImages.length === 0) {
       return new Response(
         JSON.stringify({
           summary: `No detailed notes available for ${subjectName}. Upload notes to get a comprehensive AI summary.`,
@@ -230,24 +230,29 @@ serve(async (req) => {
 
 Only reference information explicitly present in the notes.`;
 
-    const messages = fileBase64 && fileMimeType
-      ? [{
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `${summaryInstructions}\n\nThe student's notes are in the attached file. Read the file directly and summarise its content only.`,
-            },
-            {
-              type: "image_url",
-              image_url: { url: `data:${fileMimeType};base64,${fileBase64.slice(0, 4 * 1024 * 1024)}` },
-            },
-          ],
-        }]
-      : [{
-          role: "user",
-          content: `${summaryInstructions}\n\nSTUDENT NOTES:\n${actualNoteText.slice(0, 15000)}`,
-        }];
+    let messages: Array<Record<string, unknown>>;
+
+    if (fileImages.length > 0) {
+      // Build multi-image vision message with ALL uploaded files
+      const contentParts: Array<Record<string, unknown>> = [
+        {
+          type: "text",
+          text: `${summaryInstructions}\n\nThe student's notes are in the ${fileImages.length} attached file(s). Read ALL files and summarise their combined content only.${actualNoteText.length > 10 ? `\n\nAdditional text notes:\n${actualNoteText.slice(0, 5000)}` : ""}`,
+        },
+      ];
+      for (const img of fileImages) {
+        contentParts.push({
+          type: "image_url",
+          image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+        });
+      }
+      messages = [{ role: "user", content: contentParts }];
+    } else {
+      messages = [{
+        role: "user",
+        content: `${summaryInstructions}\n\nSTUDENT NOTES:\n${actualNoteText.slice(0, 15000)}`,
+      }];
+    }
 
     let summary = await requestSummary({
       apiKey: lovableApiKey,

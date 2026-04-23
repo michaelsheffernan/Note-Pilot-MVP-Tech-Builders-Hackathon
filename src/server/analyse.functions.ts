@@ -34,8 +34,7 @@ export const analyseNotes = createServerFn({ method: "POST" })
     const fileUrls = data.fileUrl.split("|||").filter(Boolean);
 
     let noteText = "";
-    let fileBase64 = "";
-    let fileMimeType = "";
+    const fileImages: { base64: string; mimeType: string }[] = [];
 
     for (const url of fileUrls) {
       const { data: fileData, error: downloadError } = await supabase.storage
@@ -47,17 +46,18 @@ export const analyseNotes = createServerFn({ method: "POST" })
 
       if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png") ||
           fileName.endsWith(".pdf") || fileName.endsWith(".webp")) {
-        // For vision: only use the first image/pdf for base64 (size constraints)
-        if (!fileBase64) {
-          const arrayBuf = await fileData.arrayBuffer();
-          const bytes = new Uint8Array(arrayBuf);
-          let binary = "";
-          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-          fileBase64 = btoa(binary);
-          if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
-          else if (fileName.endsWith(".png")) fileMimeType = "image/png";
-          else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
-          else fileMimeType = "image/jpeg";
+        const arrayBuf = await fileData.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const b64 = btoa(binary);
+        // Cap each file at ~2MB base64
+        if (b64.length <= 2 * 1024 * 1024) {
+          let mime = "image/jpeg";
+          if (fileName.endsWith(".pdf")) mime = "application/pdf";
+          else if (fileName.endsWith(".png")) mime = "image/png";
+          else if (fileName.endsWith(".webp")) mime = "image/webp";
+          fileImages.push({ base64: b64, mimeType: mime });
         }
         noteText += `\n\n[File: ${url.split("/").pop()} attached for reading]\n`;
       } else {
@@ -79,10 +79,6 @@ export const analyseNotes = createServerFn({ method: "POST" })
     const testDate = new Date(data.testDate);
     const daysUntilTest = Math.max(1, Math.ceil((testDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
 
-    // Limit base64 size to avoid edge function body parse failures
-    const maxBase64Size = 4 * 1024 * 1024; // 4MB
-    const sendBase64 = fileBase64 && fileBase64.length <= maxBase64Size;
-
     // Sanitize free-text context fields with length limits
     const rawCtx = data.extraContext || {};
     const sanitizedContext: Record<string, string> = {};
@@ -97,14 +93,23 @@ export const analyseNotes = createServerFn({ method: "POST" })
       }
     }
 
+    // Send all images (up to total ~4MB) to the edge function
+    const maxTotalBase64 = 4 * 1024 * 1024;
+    const imagesToSend: { base64: string; mimeType: string }[] = [];
+    let totalSize = 0;
+    for (const img of fileImages) {
+      if (totalSize + img.base64.length > maxTotalBase64) break;
+      imagesToSend.push(img);
+      totalSize += img.base64.length;
+    }
+
     const { data: aiData, error: aiError } = await supabase.functions.invoke("analyse-ai", {
       body: {
         subjectName: data.subjectName.slice(0, 200),
         testDate: data.testDate,
         daysUntilTest,
         noteText: noteText.slice(0, 15000),
-        fileBase64: sendBase64 ? fileBase64 : undefined,
-        fileMimeType: sendBase64 ? fileMimeType : undefined,
+        fileImages: imagesToSend.length > 0 ? imagesToSend : undefined,
         uploadId: data.uploadId,
         extraContext: sanitizedContext,
       },
