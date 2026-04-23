@@ -30,36 +30,40 @@ export const analyseNotes = createServerFn({ method: "POST" })
     if (authError || !authData.user) throw new Error("Unauthorized");
     const userId = authData.user.id;
 
-    // Download the file from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from("notes")
-      .download(data.fileUrl);
-    if (downloadError || !fileData) throw new Error("Failed to download file");
+    // Support multiple files separated by "|||"
+    const fileUrls = data.fileUrl.split("|||").filter(Boolean);
 
     let noteText = "";
     let fileBase64 = "";
     let fileMimeType = "";
-    const fileName = data.fileUrl.toLowerCase();
 
-    if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png") ||
-        fileName.endsWith(".pdf") || fileName.endsWith(".webp")) {
-      const arrayBuf = await fileData.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuf);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      fileBase64 = btoa(binary);
-      if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
-      else if (fileName.endsWith(".png")) fileMimeType = "image/png";
-      else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
-      else fileMimeType = "image/jpeg";
-      noteText = `[File attached as base64 for direct reading]`;
-    } else if (fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
-      noteText = await fileData.text();
-      if (!noteText || noteText.length < 20) {
-        noteText = `Student is studying ${data.subjectName}. The uploaded DOCX file could not be parsed. Generate a comprehensive study plan and flashcards for this subject.`;
+    for (const url of fileUrls) {
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from("notes")
+        .download(url);
+      if (downloadError || !fileData) continue;
+
+      const fileName = url.toLowerCase();
+
+      if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png") ||
+          fileName.endsWith(".pdf") || fileName.endsWith(".webp")) {
+        // For vision: only use the first image/pdf for base64 (size constraints)
+        if (!fileBase64) {
+          const arrayBuf = await fileData.arrayBuffer();
+          const bytes = new Uint8Array(arrayBuf);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          fileBase64 = btoa(binary);
+          if (fileName.endsWith(".pdf")) fileMimeType = "application/pdf";
+          else if (fileName.endsWith(".png")) fileMimeType = "image/png";
+          else if (fileName.endsWith(".webp")) fileMimeType = "image/webp";
+          else fileMimeType = "image/jpeg";
+        }
+        noteText += `\n\n[File: ${url.split("/").pop()} attached for reading]\n`;
+      } else {
+        const text = await fileData.text();
+        noteText += `\n\n--- File: ${url.split("/").pop()} ---\n${text}`;
       }
-    } else {
-      noteText = await fileData.text();
     }
 
     if (!noteText || noteText.length < 5) {
