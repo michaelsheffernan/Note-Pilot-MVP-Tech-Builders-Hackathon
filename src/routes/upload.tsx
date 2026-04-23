@@ -68,7 +68,8 @@ function UploadPage() {
   const [step, setStep] = useState(1);
   const totalSteps = 3;
 
-  const [file, setFile] = useState<File | null>(null);
+  const MAX_FILES = 15;
+  const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
 
   // Study mode: "deadline" = studying for a specific test date, "duration" = studying for a set number of days
@@ -99,14 +100,28 @@ function UploadPage() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
 
+  const addFiles = useCallback((newFiles: FileList | File[]) => {
+    setFiles((prev) => {
+      const combined = [...prev, ...Array.from(newFiles)];
+      if (combined.length > MAX_FILES) {
+        toast.error(`Maximum ${MAX_FILES} files allowed`);
+        return combined.slice(0, MAX_FILES);
+      }
+      return combined;
+    });
+  }, []);
+
+  const removeFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) setFile(droppedFile);
-  }, []);
+    addFiles(e.dataTransfer.files);
+  }, [addFiles]);
 
-  const canProceedStep1 = !!file;
+  const canProceedStep1 = files.length > 0;
 
   const canProceedStep2 = (() => {
     if (!subjectName.trim() || !studyMode || !difficulty) return false;
@@ -129,18 +144,23 @@ function UploadPage() {
   };
 
   const handleSubmit = async () => {
-    if (!file || !user) return;
+    if (files.length === 0 || !user) return;
     setUploading(true);
     try {
-      const filePath = `${user.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("notes").upload(filePath, file);
-      if (uploadError) throw uploadError;
+      // Upload all files to storage
+      const filePaths: string[] = [];
+      for (const file of files) {
+        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("notes").upload(filePath, file);
+        if (uploadError) throw uploadError;
+        filePaths.push(filePath);
+      }
 
       const effectiveTestDate = getEffectiveTestDate();
 
       const { data: uploadData, error: insertError } = await supabase
         .from("uploads")
-        .insert({ user_id: user.id, file_url: filePath, subject_name: subjectName, test_date: effectiveTestDate })
+        .insert({ user_id: user.id, file_url: filePaths.join("|||"), subject_name: subjectName, test_date: effectiveTestDate })
         .select()
         .single();
       if (insertError) throw insertError;
@@ -214,29 +234,39 @@ function UploadPage() {
               onDrop={handleDrop}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              className={`glass-card flex cursor-pointer flex-col items-center justify-center p-12 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${dragOver ? "border-primary bg-primary/5 scale-[1.02]" : ""}`}
+              className={`glass-card flex cursor-pointer flex-col items-center justify-center p-8 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${dragOver ? "border-primary bg-primary/5 scale-[1.02]" : ""}`}
             >
-              {file ? (
-                <div className="flex flex-col items-center gap-3">
-                  <FileText className="h-8 w-8 text-primary" />
-                  <span className="text-foreground font-medium">{file.name}</span>
-                  <span className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
-                  <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-xs text-primary hover:underline">Change file</button>
-                </div>
-              ) : (
-                <>
-                  <UploadCloud className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-foreground font-medium">Drag and drop your notes here</p>
-                  <p className="mt-1 text-sm text-muted-foreground">or click to browse</p>
-                  <div className="mt-4 flex gap-2">
-                    {fileTypes.map((t) => (
-                      <span key={t} className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">{t}</span>
-                    ))}
-                  </div>
-                </>
-              )}
-              <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <UploadCloud className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-foreground font-medium">Drag and drop your notes here</p>
+              <p className="mt-1 text-sm text-muted-foreground">or click to browse · up to {MAX_FILES} files</p>
+              <div className="mt-3 flex gap-2">
+                {fileTypes.map((t) => (
+                  <span key={t} className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">{t}</span>
+                ))}
+              </div>
+              <input ref={fileInputRef} type="file" className="hidden" multiple accept=".pdf,.docx,.doc,.jpg,.jpeg,.png" onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
             </div>
+
+            {files.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">{files.length} file{files.length !== 1 ? "s" : ""} selected</span>
+                  <button onClick={() => setFiles([])} className="text-xs text-primary hover:underline">Clear all</button>
+                </div>
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                  {files.map((f, i) => (
+                    <div key={`${f.name}-${i}`} className="flex items-center justify-between rounded-lg border border-border bg-card/50 px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-4 w-4 text-primary shrink-0" />
+                        <span className="text-sm text-foreground truncate">{f.name}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                      </div>
+                      <button onClick={() => removeFile(i)} className="text-xs text-destructive hover:underline shrink-0 ml-2">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Button onClick={() => setStep(2)} disabled={!canProceedStep1} className="w-full gap-2" size="lg">
               Continue <ArrowRight className="h-4 w-4" />
