@@ -68,7 +68,8 @@ function UploadPage() {
   const [step, setStep] = useState(1);
   const totalSteps = 3;
 
-  const [file, setFile] = useState<File | null>(null);
+  const MAX_FILES = 15;
+  const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
 
   // Study mode: "deadline" = studying for a specific test date, "duration" = studying for a set number of days
@@ -99,14 +100,28 @@ function UploadPage() {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
 
+  const addFiles = useCallback((newFiles: FileList | File[]) => {
+    setFiles((prev) => {
+      const combined = [...prev, ...Array.from(newFiles)];
+      if (combined.length > MAX_FILES) {
+        toast.error(`Maximum ${MAX_FILES} files allowed`);
+        return combined.slice(0, MAX_FILES);
+      }
+      return combined;
+    });
+  }, []);
+
+  const removeFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) setFile(droppedFile);
-  }, []);
+    addFiles(e.dataTransfer.files);
+  }, [addFiles]);
 
-  const canProceedStep1 = !!file;
+  const canProceedStep1 = files.length > 0;
 
   const canProceedStep2 = (() => {
     if (!subjectName.trim() || !studyMode || !difficulty) return false;
@@ -129,18 +144,23 @@ function UploadPage() {
   };
 
   const handleSubmit = async () => {
-    if (!file || !user) return;
+    if (files.length === 0 || !user) return;
     setUploading(true);
     try {
-      const filePath = `${user.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("notes").upload(filePath, file);
-      if (uploadError) throw uploadError;
+      // Upload all files to storage
+      const filePaths: string[] = [];
+      for (const file of files) {
+        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("notes").upload(filePath, file);
+        if (uploadError) throw uploadError;
+        filePaths.push(filePath);
+      }
 
       const effectiveTestDate = getEffectiveTestDate();
 
       const { data: uploadData, error: insertError } = await supabase
         .from("uploads")
-        .insert({ user_id: user.id, file_url: filePath, subject_name: subjectName, test_date: effectiveTestDate })
+        .insert({ user_id: user.id, file_url: filePaths.join("|||"), subject_name: subjectName, test_date: effectiveTestDate })
         .select()
         .single();
       if (insertError) throw insertError;
