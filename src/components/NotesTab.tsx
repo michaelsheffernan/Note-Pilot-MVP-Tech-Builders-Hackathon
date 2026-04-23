@@ -26,16 +26,19 @@ export function NotesTab({ uploadId, fileText, fileUrl, subjectName, accessToken
   const [showPdf, setShowPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isPdf = fileUrl?.toLowerCase().endsWith(".pdf");
-  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(fileUrl || "");
+  // Support multiple files separated by "|||"
+  const fileUrls = (fileUrl || "").split("|||").filter(Boolean);
+  const firstFile = fileUrls[0] || "";
+  const isPdf = firstFile.toLowerCase().endsWith(".pdf");
+  const isImage = /\.(jpg|jpeg|png|webp)$/i.test(firstFile);
   const isViewable = isPdf || isImage;
 
   useEffect(() => {
-    if (!fileUrl || !isViewable) return;
-    supabase.storage.from("notes").createSignedUrl(fileUrl, 3600).then(({ data }) => {
+    if (!firstFile || !isViewable) return;
+    supabase.storage.from("notes").createSignedUrl(firstFile, 3600).then(({ data }) => {
       if (data?.signedUrl) setPdfUrl(data.signedUrl);
     });
-  }, [fileUrl, isViewable]);
+  }, [firstFile, isViewable]);
 
   const generateSummary = async () => {
     if (aiSummary) return;
